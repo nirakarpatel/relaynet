@@ -141,6 +141,57 @@ app/build/outputs/apk/debug/app-debug.apk (19.7 MB)
 
 ---
 
+## 🐍 Python FastAPI Backend API
+
+The project includes the backend service implementing Sections 5, 6, 9, 11, and 13 of the blueprint:
+
+```bash
+# Install backend dependencies
+pip install -r backend/requirements.txt
+
+# Start the RelayNet API server
+python backend/run_server.py
+```
+Server runs at `http://127.0.0.1:8000` with interactive Swagger docs at `http://127.0.0.1:8000/docs`.
+
+### Backend API Surface
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/curriculum` | GET | Curriculum catalogue for Odisha State Board, CBSE, and ICSE (Classes 6–10) |
+| `/topics/{topic_id}` | GET | Topic detail with bilingual lesson content, glossary, and diagnostic quiz |
+| `/content-packs` | GET | List available offline learning packs with SHA-256 hashes |
+| `/content-packs/{pack_id}/download` | GET | Download canonical compressed `.zip` learning pack conforming to Section 9 |
+| `/tutor/ask` | POST | Controlled AI tutor workflow grounded in approved curriculum (Odia + English) |
+| `/quizzes/generate-draft` | POST | Generate draft diagnostic quiz questions tied to curriculum concepts |
+| `/quiz-attempts` | POST | Submit quiz attempts, track misconception tags, and calculate mastery estimates |
+| `/learners/{id}/progress` | GET | Student mastery profile and recent attempts history |
+| `/sync/events` | POST | Idempotent batch sync for events queued while the learner was offline |
+| `/teacher/lecture-transcription` | POST | Teacher lecture audio transcription and draft quiz generation pipeline |
+| `/teacher/content-packs/publish` | POST | Teacher approval & publishing of verified learning pack |
+
+---
+
+## 📦 Learning Pack ZIP Specification (Section 9)
+
+Learning packs follow the versioned offline bundle specification:
+
+```text
+relaynet_class9_science_photosynthesis_v1.zip
+  ├── manifest.json            # Pack ID, version, board, grade, SHA-256 checksum, license
+  ├── lesson/
+  │   ├── odia.json            # Complete lesson in Odia with chemical equations
+  │   └── english.json         # Complete lesson in English
+  ├── quiz/
+  │   ├── questions.json       # Concept-mapped diagnostic questions & misconception explanations
+  │   └── answer_key.json      # Verified answer keys and rationale
+  └── attribution.txt          # Source attribution and academic licensing
+```
+
+The Android app includes `ZipPackManager.kt` which safely extracts packs, enforces Zip Slip / path traversal protection (`canonicalPath` containment check), validates uncompressed size limits (Zip Bomb defense), and verifies SHA-256 cryptographic hashes before importing into Room SQLite.
+
+---
+
 ## 🎬 5-Minute Demo Walkthrough for Evaluators
 
 1. **Curriculum & Bilingual Lesson:**

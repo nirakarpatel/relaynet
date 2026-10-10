@@ -50,4 +50,14 @@ class RelayNetUnitTest {
         val foundation = strong.copy(masteryScore = 30)
         assertTrue(foundation.tierLabel.contains("Needs Foundation"))
     }
+
+    @Test
+    fun zipPackManager_calculatesSha256Checksum() {
+        val tempFile = java.io.File.createTempFile("relaynet_test", ".txt")
+        tempFile.writeText("RelayNet Pilot Pack Content")
+        val sha = com.nmiet.app.data.local.ZipPackManager.calculateSha256(tempFile)
+        assertNotNull(sha)
+        assertEquals(64, sha.length)
+        tempFile.delete()
+    }
 }
