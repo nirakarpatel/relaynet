@@ -135,3 +135,18 @@ fun ReceivedViaNearbyBadge(peerName: String?, modifier: Modifier = Modifier) {
         )
     }
 }
+
+fun formatRelativeTime(timestamp: Long): String {
+    val diffMillis = System.currentTimeMillis() - timestamp
+    val minutes = diffMillis / (1000 * 60)
+    val hours = minutes / 60
+    val days = hours / 24
+
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "${minutes}m ago"
+        hours < 24 -> "${hours}h ago"
+        days < 7 -> "${days}d ago"
+        else -> java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+    }
+}

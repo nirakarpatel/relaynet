@@ -2,7 +2,8 @@ package com.nmiet.app.ui.screens.nearbyshare
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nmiet.app.domain.model.ContentItem
+import com.nmiet.app.data.remote.PilotCurriculumCatalog
+import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
 import com.nmiet.app.domain.repository.ContentRepository
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NearbyShareViewModel(
     private val repository: ContentRepository,
     val demoManager: DemoTransferManager,
@@ -30,28 +32,19 @@ class NearbyShareViewModel(
 
     val transferState: StateFlow<TransferState> = _activeManager.flatMapLatest { manager ->
         manager.transferState
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = TransferState.Idle
-    )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TransferState.Idle)
 
-    val cachedItems: StateFlow<List<ContentItem>> = repository.getAllContentFlow()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    val learningPacks: StateFlow<List<LearningPack>> = repository.getLearningPacksFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _selectedItemIds = MutableStateFlow<Set<String>>(emptySet())
-    val selectedItemIds: StateFlow<Set<String>> = _selectedItemIds.asStateFlow()
+    private val _selectedPackId = MutableStateFlow<String?>(null)
+    val selectedPackId: StateFlow<String?> = _selectedPackId.asStateFlow()
 
     init {
-        // Pre-select all cached items by default
         viewModelScope.launch {
-            repository.getAllContentFlow().collect { list ->
-                if (_selectedItemIds.value.isEmpty() && list.isNotEmpty()) {
-                    _selectedItemIds.value = list.map { it.id }.toSet()
+            repository.getLearningPacksFlow().collect { packs ->
+                if (_selectedPackId.value == null && packs.isNotEmpty()) {
+                    _selectedPackId.value = packs.first().packId
                 }
             }
         }
@@ -72,56 +65,28 @@ class NearbyShareViewModel(
         _activeManager.value.stopScanning()
     }
 
-    fun toggleItemSelection(id: String) {
-        val current = _selectedItemIds.value.toMutableSet()
-        if (current.contains(id)) {
-            current.remove(id)
-        } else {
-            current.add(id)
-        }
-        _selectedItemIds.value = current
-    }
-
-    fun selectAllItems() {
-        _selectedItemIds.value = cachedItems.value.map { it.id }.toSet()
+    fun selectPack(packId: String) {
+        _selectedPackId.value = packId
     }
 
     fun sendToPeer(peer: PeerDevice) {
-        val selected = cachedItems.value.filter { _selectedItemIds.value.contains(it.id) }
-        _activeManager.value.sendContentToPeer(peer, selected)
+        val pack = learningPacks.value.firstOrNull { it.packId == _selectedPackId.value }
+            ?: learningPacks.value.firstOrNull()
+            ?: PilotCurriculumCatalog.getPilotLearningPack()
+
+        _activeManager.value.sendPackToPeer(peer, pack)
     }
 
     fun simulateIncomingTransferFromPeer(peer: PeerDevice) {
         if (_useDemoMode.value) {
-            val incomingDemoItems = listOf(
-                ContentItem(
-                    id = "nmiet-peer-shared-01",
-                    title = "[Peer Received] Mid-Term Practical Exam Schedule Released",
-                    summary = "Received over Bluetooth from ${peer.name}. Contains full lab batch allocations.",
-                    body = "This document was transferred directly from a peer device over Bluetooth mesh. Lab examinations for CSE 3rd year will be conducted in Computer Center 2. Check your batch numbers on the department bulletin board.",
-                    category = "Exams",
-                    source = "NMIET Peer Mesh",
-                    publishedAt = System.currentTimeMillis() - 3600000,
-                    contentHash = "a7f9b2c8d4e1",
-                    isSavedOffline = true,
-                    isReceivedViaNearby = true,
-                    receivedFromPeerName = peer.name
-                ),
-                ContentItem(
-                    id = "nmiet-peer-shared-02",
-                    title = "[Peer Received] Library Emergency Hours & Off-Grid Access",
-                    summary = "Shared offline by ${peer.name} during internet outage.",
-                    body = "Received offline via peer-to-peer transport. Study rooms remain open 24/7 with backup generator power. Offline research terminals are accessible on the second floor.",
-                    category = "Campus Life",
-                    source = "NMIET Peer Mesh",
-                    publishedAt = System.currentTimeMillis() - 7200000,
-                    contentHash = "b810d4e9c3f2",
-                    isSavedOffline = true,
-                    isReceivedViaNearby = true,
-                    receivedFromPeerName = peer.name
-                )
+            val incomingPack = PilotCurriculumCatalog.getPilotLearningPack().copy(
+                packId = "relaynet_class9_science_mesh_received_v1",
+                titleEnglish = "[Peer Mesh] Photosynthesis & Plant Nutrition",
+                titleOdia = "[ସହପାଠୀ ସେୟାର] ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା",
+                isReceivedViaMesh = true,
+                peerSenderName = peer.name
             )
-            demoManager.simulateReceiveContentFromPeer(peer, incomingDemoItems)
+            demoManager.simulateReceivePackFromPeer(peer, incomingPack)
         }
     }
 

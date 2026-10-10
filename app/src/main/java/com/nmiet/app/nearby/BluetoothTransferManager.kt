@@ -10,7 +10,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import com.nmiet.app.domain.model.ContentItem
+import com.nmiet.app.data.local.LearningPackEntity
+import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -31,7 +31,7 @@ import java.util.UUID
 class BluetoothTransferManager(
     private val context: Context,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
-    private val onContentReceivedCallback: (suspend (items: List<ContentItem>, peerName: String) -> Unit)? = null
+    private val onPackReceivedCallback: (suspend (pack: LearningPack, peerName: String) -> Unit)? = null
 ) : NearbyTransferManager {
 
     override val isDemoMode: Boolean = false
@@ -50,7 +50,7 @@ class BluetoothTransferManager(
 
     companion object {
         private val SERVICE_UUID: UUID = UUID.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66")
-        private const val SERVICE_NAME = "NMIET_OFFLINE_TRANSFER"
+        private const val SERVICE_NAME = "RELAYNET_PACK_TRANSFER"
     }
 
     private val discoveryReceiver = object : BroadcastReceiver() {
@@ -58,12 +58,13 @@ class BluetoothTransferManager(
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 BluetoothDevice.ACTION_FOUND -> {
+                    @Suppress("DEPRECATION")
                     val device: BluetoothDevice? =
                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                     val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, (-60).toShort()).toInt()
 
                     device?.let { dev ->
-                        val name = dev.name ?: "Nearby Android Device"
+                        val name = dev.name ?: "Nearby Android Learner"
                         val address = dev.address ?: dev.hashCode().toString()
                         val peer = PeerDevice(
                             id = address,
@@ -78,7 +79,7 @@ class BluetoothTransferManager(
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                     val peers = discoveredPeersMap.values.toList()
                     _transferState.value = if (peers.isEmpty()) {
-                        TransferState.Error("No nearby Bluetooth peers found. Ensure nearby devices are discoverable.", canRetry = true)
+                        TransferState.Error("No nearby Bluetooth devices found. Ensure Bluetooth is discoverable.", canRetry = true)
                     } else {
                         TransferState.Scanning(peers)
                     }
@@ -97,12 +98,11 @@ class BluetoothTransferManager(
         discoveredPeersMap.clear()
         _transferState.value = TransferState.Scanning(emptyList())
 
-        // Add currently paired/bonded devices right away
         try {
             bluetoothAdapter.bondedDevices?.forEach { dev ->
                 val peer = PeerDevice(
                     id = dev.address,
-                    name = dev.name ?: "Paired Device",
+                    name = dev.name ?: "Paired Learner Device",
                     address = dev.address,
                     signalStrengthRssi = -50
                 )
@@ -123,7 +123,6 @@ class BluetoothTransferManager(
             _transferState.value = TransferState.Error("Bluetooth permissions missing: ${e.message}", canRetry = false)
         }
 
-        // Also start listening for incoming transfers from peers
         startServerListening()
     }
 
@@ -138,11 +137,7 @@ class BluetoothTransferManager(
     }
 
     @SuppressLint("MissingPermission")
-    override fun sendContentToPeer(peer: PeerDevice, items: List<ContentItem>) {
-        if (items.isEmpty()) {
-            _transferState.value = TransferState.Error("No items selected to share.", canRetry = false)
-            return
-        }
+    override fun sendPackToPeer(peer: PeerDevice, pack: LearningPack) {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             _transferState.value = TransferState.Error("Bluetooth is disabled.", canRetry = true)
             return
@@ -161,56 +156,56 @@ class BluetoothTransferManager(
 
                 _transferState.value = TransferState.Connected(peer)
 
-                // Serialize payload to JSON
-                val jsonArray = JSONArray()
-                items.forEach { item ->
-                    val obj = JSONObject().apply {
-                        put("id", item.id)
-                        put("title", item.title)
-                        put("summary", item.summary)
-                        put("body", item.body)
-                        put("category", item.category)
-                        put("source", item.source)
-                        put("publishedAt", item.publishedAt)
-                        put("contentHash", item.contentHash)
-                    }
-                    jsonArray.put(obj)
+                val entity = LearningPackEntity.fromDomain(pack)
+                val json = JSONObject().apply {
+                    put("type", "RELAYNET_LEARNING_PACK")
+                    put("packId", entity.packId)
+                    put("titleOdia", entity.titleOdia)
+                    put("titleEnglish", entity.titleEnglish)
+                    put("boardName", entity.boardName)
+                    put("classGrade", entity.classGrade)
+                    put("subject", entity.subject)
+                    put("chapterOdia", entity.chapterOdia)
+                    put("chapterEnglish", entity.chapterEnglish)
+                    put("topicOdia", entity.topicOdia)
+                    put("topicEnglish", entity.topicEnglish)
+                    put("lessonSummaryOdia", entity.lessonSummaryOdia)
+                    put("lessonSummaryEnglish", entity.lessonSummaryEnglish)
+                    put("equationOrFormula", entity.equationOrFormula ?: "")
+                    put("sectionsJson", entity.sectionsJson)
+                    put("quizQuestionsJson", entity.quizQuestionsJson)
+                    put("checksumSha256", entity.checksumSha256)
+                    put("sourceAttribution", entity.sourceAttribution)
                 }
-
-                val payload = JSONObject().apply {
-                    put("type", "CONTENT_PAYLOAD")
-                    put("version", 1)
-                    put("items", jsonArray)
-                }.toString()
 
                 val writer = OutputStreamWriter(socket.outputStream)
                 _transferState.value = TransferState.Transferring(
                     peer = peer,
                     isOutgoing = true,
                     progressPercent = 50,
-                    currentItemTitle = items.first().title,
-                    totalItems = items.size,
+                    currentItemTitle = pack.titleEnglish,
+                    totalItems = 1,
                     currentItemIndex = 1
                 )
 
-                writer.write(payload + "\n")
+                writer.write(json.toString() + "\n")
                 writer.flush()
 
                 _transferState.value = TransferState.Transferring(
                     peer = peer,
                     isOutgoing = true,
                     progressPercent = 100,
-                    currentItemTitle = items.last().title,
-                    totalItems = items.size,
-                    currentItemIndex = items.size
+                    currentItemTitle = pack.titleEnglish,
+                    totalItems = 1,
+                    currentItemIndex = 1
                 )
 
                 socket.close()
 
                 _transferState.value = TransferState.Success(
                     peer = peer,
-                    transferredCount = items.size,
-                    message = "Successfully transferred ${items.size} item(s) to ${peer.name} via Bluetooth RFCOMM."
+                    transferredCount = 1,
+                    message = "Pack '${pack.titleEnglish}' sent to ${peer.name} over Bluetooth RFCOMM."
                 )
             } catch (e: Exception) {
                 _transferState.value = TransferState.Error("Transfer failed: ${e.localizedMessage ?: "Connection error"}", canRetry = true)
@@ -255,34 +250,36 @@ class BluetoothTransferManager(
 
             if (!line.isNullOrEmpty()) {
                 val json = JSONObject(line)
-                val jsonArray = json.getJSONArray("items")
-                val receivedItems = mutableListOf<ContentItem>()
+                val entity = LearningPackEntity(
+                    packId = json.getString("packId"),
+                    titleOdia = json.getString("titleOdia"),
+                    titleEnglish = json.getString("titleEnglish"),
+                    boardName = json.getString("boardName"),
+                    classGrade = json.getInt("classGrade"),
+                    subject = json.getString("subject"),
+                    chapterOdia = json.getString("chapterOdia"),
+                    chapterEnglish = json.getString("chapterEnglish"),
+                    topicOdia = json.getString("topicOdia"),
+                    topicEnglish = json.getString("topicEnglish"),
+                    lessonSummaryOdia = json.getString("lessonSummaryOdia"),
+                    lessonSummaryEnglish = json.getString("lessonSummaryEnglish"),
+                    equationOrFormula = if (json.optString("equationOrFormula").isEmpty()) null else json.getString("equationOrFormula"),
+                    sectionsJson = json.getString("sectionsJson"),
+                    quizQuestionsJson = json.getString("quizQuestionsJson"),
+                    checksumSha256 = json.getString("checksumSha256"),
+                    isDownloaded = true,
+                    isReceivedViaMesh = true,
+                    peerSenderName = peerName,
+                    sourceAttribution = json.getString("sourceAttribution")
+                )
 
-                for (i in 0 until jsonArray.length()) {
-                    val obj = jsonArray.getJSONObject(i)
-                    receivedItems.add(
-                        ContentItem(
-                            id = obj.getString("id"),
-                            title = obj.getString("title"),
-                            summary = obj.getString("summary"),
-                            body = obj.getString("body"),
-                            category = obj.getString("category"),
-                            source = obj.getString("source"),
-                            publishedAt = obj.getLong("publishedAt"),
-                            contentHash = obj.getString("contentHash"),
-                            isSavedOffline = true,
-                            isReceivedViaNearby = true,
-                            receivedFromPeerName = peerName
-                        )
-                    )
-                }
-
-                onContentReceivedCallback?.invoke(receivedItems, peerName)
+                val pack = entity.toDomain()
+                onPackReceivedCallback?.invoke(pack, peerName)
 
                 _transferState.value = TransferState.Success(
                     peer = peer,
-                    transferredCount = receivedItems.size,
-                    message = "Received and stored ${receivedItems.size} items from $peerName via Bluetooth."
+                    transferredCount = 1,
+                    message = "Received and verified pack '${pack.titleEnglish}' from $peerName via Bluetooth."
                 )
             }
             socket.close()

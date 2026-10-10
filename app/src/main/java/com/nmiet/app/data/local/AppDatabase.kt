@@ -5,9 +5,18 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [ContentEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [
+        LearningPackEntity::class,
+        QuizAttemptEntity::class,
+        TopicMasteryEntity::class,
+        TutorMessageEntity::class
+    ],
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun contentDao(): ContentDao
+    abstract fun learningDao(): LearningDao
 
     companion object {
         @Volatile
@@ -18,7 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "nmiet_content_database"
+                    "relaynet_learning_database"
                 ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance

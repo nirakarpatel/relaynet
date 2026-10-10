@@ -1,6 +1,6 @@
 package com.nmiet.app.nearby
 
-import com.nmiet.app.domain.model.ContentItem
+import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +11,7 @@ interface NearbyTransferManager {
 
     fun startScanning()
     fun stopScanning()
-    fun sendContentToPeer(peer: PeerDevice, items: List<ContentItem>)
+    fun sendPackToPeer(peer: PeerDevice, pack: LearningPack)
     fun cancelTransfer()
     fun resetToIdle()
 }

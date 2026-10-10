@@ -1,6 +1,6 @@
 package com.nmiet.app.nearby
 
-import com.nmiet.app.domain.model.ContentItem
+import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
 import kotlinx.coroutines.CoroutineScope
@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 class DemoTransferManager(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
-    private val onContentReceivedCallback: (suspend (items: List<ContentItem>, peerName: String) -> Unit)? = null
+    private val onPackReceivedCallback: (suspend (pack: LearningPack, peerName: String) -> Unit)? = null
 ) : NearbyTransferManager {
 
     override val isDemoMode: Boolean = true
@@ -26,22 +26,22 @@ class DemoTransferManager(
 
     private val simulatedPeers = listOf(
         PeerDevice(
-            id = "demo-peer-1",
-            name = "Device B (CSE Lab Peer)",
+            id = "demo-peer-b",
+            name = "Student Phone B (Offline Learner)",
             address = "74:D2:1D:91:AA:01",
-            signalStrengthRssi = -48
+            signalStrengthRssi = -46
         ),
         PeerDevice(
-            id = "demo-peer-2",
-            name = "Student Phone (NMIET Library)",
+            id = "demo-peer-school",
+            name = "Village School Terminal (Gram Panchayat)",
             address = "AC:5F:3E:12:88:B4",
-            signalStrengthRssi = -64
+            signalStrengthRssi = -62
         ),
         PeerDevice(
-            id = "demo-peer-3",
-            name = "Faculty Tablet (Admin Block)",
+            id = "demo-peer-tablet",
+            name = "Class 9 Study Tablet (Community Center)",
             address = "38:F9:D3:45:90:7C",
-            signalStrengthRssi = -78
+            signalStrengthRssi = -75
         )
     )
 
@@ -50,12 +50,11 @@ class DemoTransferManager(
         _transferState.value = TransferState.Scanning(emptyList())
 
         activeJob = scope.launch {
-            // Emulate staggered peer discovery
-            delay(600)
+            delay(500)
             _transferState.value = TransferState.Scanning(simulatedPeers.take(1))
-            delay(700)
+            delay(600)
             _transferState.value = TransferState.Scanning(simulatedPeers.take(2))
-            delay(800)
+            delay(600)
             _transferState.value = TransferState.Scanning(simulatedPeers)
         }
     }
@@ -68,45 +67,7 @@ class DemoTransferManager(
         }
     }
 
-    override fun sendContentToPeer(peer: PeerDevice, items: List<ContentItem>) {
-        if (items.isEmpty()) {
-            _transferState.value = TransferState.Error("No content items selected to transfer.", canRetry = false)
-            return
-        }
-
-        activeJob?.cancel()
-        activeJob = scope.launch {
-            _transferState.value = TransferState.Connecting(peer)
-            delay(700) // simulated handshake
-
-            _transferState.value = TransferState.Connected(peer)
-            delay(500)
-
-            val totalItems = items.size
-            items.forEachIndexed { index, item ->
-                val steps = listOf(15, 35, 60, 85, 100)
-                for (progress in steps) {
-                    _transferState.value = TransferState.Transferring(
-                        peer = peer,
-                        isOutgoing = true,
-                        progressPercent = progress,
-                        currentItemTitle = item.title,
-                        totalItems = totalItems,
-                        currentItemIndex = index + 1
-                    )
-                    delay(250)
-                }
-            }
-
-            _transferState.value = TransferState.Success(
-                peer = peer,
-                transferredCount = items.size,
-                message = "Successfully shared ${items.size} item(s) with ${peer.name} [Demo Mode]."
-            )
-        }
-    }
-
-    fun simulateReceiveContentFromPeer(peer: PeerDevice, items: List<ContentItem>) {
+    override fun sendPackToPeer(peer: PeerDevice, pack: LearningPack) {
         activeJob?.cancel()
         activeJob = scope.launch {
             _transferState.value = TransferState.Connecting(peer)
@@ -115,27 +76,55 @@ class DemoTransferManager(
             _transferState.value = TransferState.Connected(peer)
             delay(400)
 
-            items.forEachIndexed { index, item ->
-                val steps = listOf(20, 50, 80, 100)
-                for (progress in steps) {
-                    _transferState.value = TransferState.Transferring(
-                        peer = peer,
-                        isOutgoing = false,
-                        progressPercent = progress,
-                        currentItemTitle = item.title,
-                        totalItems = items.size,
-                        currentItemIndex = index + 1
-                    )
-                    delay(200)
-                }
+            val steps = listOf(15, 35, 60, 85, 100)
+            for (progress in steps) {
+                _transferState.value = TransferState.Transferring(
+                    peer = peer,
+                    isOutgoing = true,
+                    progressPercent = progress,
+                    currentItemTitle = "${pack.titleEnglish} (${pack.sizeBytes / 1024} KB)",
+                    totalItems = 1,
+                    currentItemIndex = 1
+                )
+                delay(220)
             }
-
-            onContentReceivedCallback?.invoke(items, peer.name)
 
             _transferState.value = TransferState.Success(
                 peer = peer,
-                transferredCount = items.size,
-                message = "Received ${items.size} item(s) from ${peer.name} [Demo Mode] and saved offline."
+                transferredCount = 1,
+                message = "Learning pack '${pack.titleEnglish}' transferred successfully to ${peer.name} [SHA-256 verified]."
+            )
+        }
+    }
+
+    fun simulateReceivePackFromPeer(peer: PeerDevice, pack: LearningPack) {
+        activeJob?.cancel()
+        activeJob = scope.launch {
+            _transferState.value = TransferState.Connecting(peer)
+            delay(500)
+
+            _transferState.value = TransferState.Connected(peer)
+            delay(400)
+
+            val steps = listOf(20, 45, 75, 100)
+            for (progress in steps) {
+                _transferState.value = TransferState.Transferring(
+                    peer = peer,
+                    isOutgoing = false,
+                    progressPercent = progress,
+                    currentItemTitle = "${pack.titleEnglish} (${pack.sizeBytes / 1024} KB)",
+                    totalItems = 1,
+                    currentItemIndex = 1
+                )
+                delay(200)
+            }
+
+            onPackReceivedCallback?.invoke(pack, peer.name)
+
+            _transferState.value = TransferState.Success(
+                peer = peer,
+                transferredCount = 1,
+                message = "Received and verified pack '${pack.titleEnglish}' from ${peer.name}. Ready for offline learning!"
             )
         }
     }

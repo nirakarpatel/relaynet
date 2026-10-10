@@ -13,52 +13,53 @@ import com.nmiet.app.data.repository.ContentRepositoryImpl
 import com.nmiet.app.navigation.AppNavHost
 import com.nmiet.app.nearby.BluetoothTransferManager
 import com.nmiet.app.nearby.DemoTransferManager
-import com.nmiet.app.ui.screens.home.HomeViewModel
-import com.nmiet.app.ui.screens.library.LibraryViewModel
+import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
+import com.nmiet.app.ui.screens.mastery.MasteryViewModel
 import com.nmiet.app.ui.screens.nearbyshare.NearbyShareViewModel
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
+import com.nmiet.app.ui.screens.tutor.AITutorViewModel
 import com.nmiet.app.ui.theme.NMIETAppTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Initialize Room Database & DAO
+        // 1. Initialize SQLite Database & Learning DAO
         val database = AppDatabase.getInstance(applicationContext)
-        val contentDao = database.contentDao()
+        val learningDao = database.learningDao()
 
-        // 2. Initialize Repository
-        val repository = ContentRepositoryImpl(contentDao = contentDao)
+        // 2. Initialize Learning Platform Repository
+        val repository = ContentRepositoryImpl(learningDao = learningDao)
 
-        // 3. Initialize Transfer Managers with callback to persist received peer content
+        // 3. Initialize Transfer Managers with pack ingestion callback
         val demoTransferManager = DemoTransferManager(
             scope = lifecycleScope,
-            onContentReceivedCallback = { items, peerName ->
-                repository.saveIncomingPeerContent(items, peerName)
+            onPackReceivedCallback = { pack, peerName ->
+                repository.saveIncomingLearningPack(pack, peerName)
             }
         )
 
         val bluetoothTransferManager = BluetoothTransferManager(
             context = applicationContext,
             scope = lifecycleScope,
-            onContentReceivedCallback = { items, peerName ->
-                repository.saveIncomingPeerContent(items, peerName)
+            onPackReceivedCallback = { pack, peerName ->
+                repository.saveIncomingLearningPack(pack, peerName)
             }
         )
 
-        // 4. Initialize ViewModels (constructor injection for prototype MVP)
-        val homeViewModel = HomeViewModel(repository)
+        // 4. Initialize Core ViewModels
+        val curriculumViewModel = CurriculumViewModel(repository)
+        val aiTutorViewModel = AITutorViewModel(repository)
         val nearbyShareViewModel = NearbyShareViewModel(
             repository = repository,
             demoManager = demoTransferManager,
             bluetoothManager = bluetoothTransferManager
         )
-        val libraryViewModel = LibraryViewModel(repository)
+        val masteryViewModel = MasteryViewModel(repository)
         val settingsViewModel = SettingsViewModel(repository, applicationContext)
 
-        // 5. Render App UI
+        // 5. Mount App Navigation & UI
         setContent {
             NMIETAppTheme {
                 Surface(
@@ -67,9 +68,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AppNavHost(
                         repository = repository,
-                        homeViewModel = homeViewModel,
+                        curriculumViewModel = curriculumViewModel,
+                        aiTutorViewModel = aiTutorViewModel,
                         nearbyShareViewModel = nearbyShareViewModel,
-                        libraryViewModel = libraryViewModel,
+                        masteryViewModel = masteryViewModel,
                         settingsViewModel = settingsViewModel
                     )
                 }

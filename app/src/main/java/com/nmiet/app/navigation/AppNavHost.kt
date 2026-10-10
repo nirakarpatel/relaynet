@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -14,7 +12,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -25,22 +22,27 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.nmiet.app.domain.repository.ContentRepository
-import com.nmiet.app.ui.screens.contentdetail.ContentDetailScreen
-import com.nmiet.app.ui.screens.home.HomeScreen
-import com.nmiet.app.ui.screens.home.HomeViewModel
-import com.nmiet.app.ui.screens.library.LibraryScreen
-import com.nmiet.app.ui.screens.library.LibraryViewModel
+import com.nmiet.app.ui.screens.curriculum.CurriculumScreen
+import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
+import com.nmiet.app.ui.screens.lesson.LessonReaderScreen
+import com.nmiet.app.ui.screens.mastery.MasteryScreen
+import com.nmiet.app.ui.screens.mastery.MasteryViewModel
 import com.nmiet.app.ui.screens.nearbyshare.NearbyShareScreen
 import com.nmiet.app.ui.screens.nearbyshare.NearbyShareViewModel
+import com.nmiet.app.ui.screens.quiz.QuizRunnerScreen
+import com.nmiet.app.ui.screens.quiz.QuizViewModel
 import com.nmiet.app.ui.screens.settings.SettingsScreen
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
+import com.nmiet.app.ui.screens.tutor.AITutorScreen
+import com.nmiet.app.ui.screens.tutor.AITutorViewModel
 
 @Composable
 fun AppNavHost(
     repository: ContentRepository,
-    homeViewModel: HomeViewModel,
+    curriculumViewModel: CurriculumViewModel,
+    aiTutorViewModel: AITutorViewModel,
     nearbyShareViewModel: NearbyShareViewModel,
-    libraryViewModel: LibraryViewModel,
+    masteryViewModel: MasteryViewModel,
     settingsViewModel: SettingsViewModel
 ) {
     val navController = rememberNavController()
@@ -48,19 +50,19 @@ fun AppNavHost(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val bottomNavItems = listOf(
-        Screen.Feed,
-        Screen.Nearby,
-        Screen.Library,
+        Screen.Curriculum,
+        Screen.AITutor,
+        Screen.MeshShare,
+        Screen.Mastery,
         Screen.Settings
     )
 
-    val isDetailScreen = currentRoute?.startsWith("content_detail") == true
-    val syncStatus by repository.getSyncStatusFlow().collectAsState(initial = com.nmiet.app.domain.model.SyncStatus())
+    val isFullScreen = currentRoute?.startsWith("lesson") == true || currentRoute?.startsWith("quiz") == true
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(
-                visible = !isDetailScreen,
+                visible = !isFullScreen,
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
@@ -71,21 +73,7 @@ fun AppNavHost(
                     bottomNavItems.forEach { screen ->
                         val isSelected = currentRoute == screen.route
                         NavigationBarItem(
-                            icon = {
-                                if (screen == Screen.Library && syncStatus.totalSavedOfflineCount > 0) {
-                                    BadgedBox(
-                                        badge = {
-                                            Badge {
-                                                Text(syncStatus.totalSavedOfflineCount.toString())
-                                            }
-                                        }
-                                    ) {
-                                        Icon(imageVector = screen.icon, contentDescription = screen.title)
-                                    }
-                                } else {
-                                    Icon(imageVector = screen.icon, contentDescription = screen.title)
-                                }
-                            },
+                            icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
@@ -112,26 +100,31 @@ fun AppNavHost(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.FEED,
+            startDestination = Routes.CURRICULUM,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Routes.FEED) {
-                HomeScreen(
-                    viewModel = homeViewModel,
-                    onItemClick = { itemId ->
-                        navController.navigate(Routes.contentDetail(itemId))
+            composable(Routes.CURRICULUM) {
+                CurriculumScreen(
+                    viewModel = curriculumViewModel,
+                    onOpenLesson = { packId ->
+                        navController.navigate(Routes.lessonReader(packId))
+                    },
+                    onStartQuiz = { packId ->
+                        navController.navigate(Routes.quizRunner(packId))
                     }
                 )
             }
 
-            composable(Routes.NEARBY) {
+            composable(Routes.TUTOR) {
+                AITutorScreen(viewModel = aiTutorViewModel)
+            }
+
+            composable(Routes.MESH_SHARE) {
                 NearbyShareScreen(
                     viewModel = nearbyShareViewModel,
-                    onNavigateToLibrary = {
-                        navController.navigate(Routes.LIBRARY) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
+                    onNavigateToCurriculum = {
+                        navController.navigate(Routes.CURRICULUM) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -139,44 +132,48 @@ fun AppNavHost(
                 )
             }
 
-            composable(Routes.LIBRARY) {
-                LibraryScreen(
-                    viewModel = libraryViewModel,
-                    onItemClick = { itemId ->
-                        navController.navigate(Routes.contentDetail(itemId))
-                    },
-                    onNavigateToFeed = {
-                        navController.navigate(Routes.FEED) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+            composable(Routes.MASTERY) {
+                MasteryScreen(
+                    viewModel = masteryViewModel,
+                    onPracticeTopic = { packId ->
+                        navController.navigate(Routes.quizRunner(packId))
                     }
                 )
             }
 
             composable(Routes.SETTINGS) {
-                SettingsScreen(
-                    viewModel = settingsViewModel
+                SettingsScreen(viewModel = settingsViewModel)
+            }
+
+            composable(
+                route = Routes.LESSON_READER,
+                arguments = listOf(navArgument("packId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val packId = backStackEntry.arguments?.getString("packId") ?: ""
+                LessonReaderScreen(
+                    packId = packId,
+                    repository = repository,
+                    onBackClick = { navController.popBackStack() },
+                    onStartQuiz = { targetPackId ->
+                        navController.navigate(Routes.quizRunner(targetPackId))
+                    }
                 )
             }
 
             composable(
-                route = Routes.CONTENT_DETAIL,
-                arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                route = Routes.QUIZ_RUNNER,
+                arguments = listOf(navArgument("packId") { type = NavType.StringType })
             ) { backStackEntry ->
-                val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
-                ContentDetailScreen(
-                    itemId = itemId,
-                    repository = repository,
+                val packId = backStackEntry.arguments?.getString("packId") ?: ""
+                val quizViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                    QuizViewModel(repository, packId)
+                }
+                QuizRunnerScreen(
+                    viewModel = quizViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onNavigateToNearbyShare = {
-                        navController.navigate(Routes.NEARBY) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
+                    onNavigateToMastery = {
+                        navController.navigate(Routes.MASTERY) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
