@@ -9,8 +9,15 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LearningDao {
 
+    // --- Learner Profile ---
+    @Query("SELECT * FROM learner_profile WHERE profileId = :id LIMIT 1")
+    fun getProfileById(id: String = "primary_learner"): Flow<LearnerProfileEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertProfile(profile: LearnerProfileEntity)
+
     // --- Learning Packs ---
-    @Query("SELECT * FROM learning_packs ORDER BY classGrade ASC, subject ASC")
+    @Query("SELECT * FROM learning_packs ORDER BY grade ASC, subject ASC")
     fun getAllPacks(): Flow<List<LearningPackEntity>>
 
     @Query("SELECT * FROM learning_packs WHERE packId = :packId LIMIT 1")

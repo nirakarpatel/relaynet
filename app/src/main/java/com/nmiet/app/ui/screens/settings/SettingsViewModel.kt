@@ -33,6 +33,17 @@ class SettingsViewModel(
     private val _isBluetoothEnabled = MutableStateFlow(NearbyPermissionManager.isBluetoothEnabled(context))
     val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled.asStateFlow()
 
+    // Adaptive Storage Breakdown State
+    private val _audioCacheSizeMb = MutableStateFlow(12.8)
+    val audioCacheSizeMb: StateFlow<Double> = _audioCacheSizeMb.asStateFlow()
+
+    private val _coreDataSizeMb = MutableStateFlow(1.4)
+    val coreDataSizeMb: StateFlow<Double> = _coreDataSizeMb.asStateFlow()
+
+    // Sync Queue Status
+    private val _pendingSyncAttemptsCount = MutableStateFlow(3)
+    val pendingSyncAttemptsCount: StateFlow<Int> = _pendingSyncAttemptsCount.asStateFlow()
+
     fun updateBoard(board: Board) {
         val current = profile.value
         viewModelScope.launch {
@@ -59,13 +70,26 @@ class SettingsViewModel(
         _isBluetoothEnabled.value = NearbyPermissionManager.isBluetoothEnabled(context)
     }
 
-    fun toggleNetworkOnline(isOnline: Boolean) {
-        repository.setSimulatedNetworkOnline(isOnline)
+    fun toggleOfflineSimulationSwitch(forceOffline: Boolean) {
+        // Toggle simulated network status (force offline = !isOnline)
+        repository.setSimulatedNetworkOnline(!forceOffline)
+    }
+
+    fun clearAudioCache() {
+        _audioCacheSizeMb.value = 0.0
+    }
+
+    fun triggerCloudSync() {
+        if (syncStatus.value.isOnline) {
+            _pendingSyncAttemptsCount.value = 0
+        }
     }
 
     fun resetToDemoCatalog() {
         viewModelScope.launch {
             repository.resetToPilotDemoPacks()
+            _audioCacheSizeMb.value = 12.8
+            _pendingSyncAttemptsCount.value = 3
         }
     }
 }

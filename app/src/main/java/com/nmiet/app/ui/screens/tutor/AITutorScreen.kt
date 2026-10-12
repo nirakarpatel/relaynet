@@ -1,7 +1,13 @@
 package com.nmiet.app.ui.screens.tutor
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +22,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material3.Card
@@ -41,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,16 +79,17 @@ fun AITutorScreen(
         }
     }
 
+    // Mandatory One-Tap Suggestion Chips from Prompt Contract
     val sampleQueries = listOf(
-        "ଆଲୋକ ଶ୍ଳେଷଣର ସମୀକରଣ କ'ଣ?",
-        "କ୍ଲୋରୋଫିଲ୍ ର କାର୍ଯ୍ୟ କଣ?",
-        "ଅମ୍ଳଜାନ କେଉଁଠାରୁ ବାହାରେ?"
+        "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
+        "Where does Oxygen come from in photosynthesis?",
+        "Translate to Odia (ଓଡ଼ିଆରେ କୁହନ୍ତୁ)"
     )
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "RelayNet AI Tutor",
+                title = "Bilingual AI Tutor",
                 isOnline = syncStatus.isOnline
             )
         }
@@ -106,17 +116,17 @@ fun AITutorScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (syncStatus.isOnline)
-                            "Online Mode: Cloud Curriculum Reasoning Active"
+                            "Online Mode: [Cloud AI] Reasoning active"
                         else
-                            "Offline Mode: Grounded in local Class 9 Science Pack",
+                            "Offline Mode: [Offline Grounded] using local SQLite rules matrix",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = if (syncStatus.isOnline) PrimaryBlue else WarningAmber
                     )
                 }
             }
 
-            // Chat Messages List
+            // Chat Messages Stream
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -126,7 +136,7 @@ fun AITutorScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { it.id }) { msg ->
-                    TutorMessageBubble(message = msg)
+                    TutorMessageBubble(message = msg, isOnlineContext = syncStatus.isOnline)
                 }
 
                 if (isGenerating) {
@@ -137,35 +147,41 @@ fun AITutorScreen(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("RelayNet Tutor is formulating explanation...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("RelayNet AI Tutor is formulating response...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
             }
 
-            // Quick suggestion chips
+            // Animated Audio-Wave indicator when microphone press-to-speak is active
+            if (isRecording) {
+                VoiceWaveformIndicator()
+            }
+
+            // Mandatory One-tap suggestion chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 sampleQueries.forEach { query ->
                     SuggestionChip(
                         onClick = { viewModel.sendMessage(query) },
-                        label = { Text(query, fontSize = 11.sp) }
+                        label = { Text(query, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
                     )
                 }
             }
 
-            // Input Row with Voice Microphone & Send
+            // Voice-First Input Bar with Prominent Microphone button
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -173,17 +189,21 @@ fun AITutorScreen(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Prominent Microphone Button (Press-to-speak in Odia or English)
+                    val micScale by animateMicPulse(isRecording)
                     IconButton(
                         onClick = { viewModel.simulateVoiceInput() },
                         modifier = Modifier
-                            .size(40.dp)
+                            .scale(micScale)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(if (isRecording) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
+                            .background(if (isRecording) MaterialTheme.colorScheme.error else PrimaryBlue)
                     ) {
                         Icon(
                             imageVector = if (isRecording) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Voice Input",
-                            tint = if (isRecording) MaterialTheme.colorScheme.error else PrimaryBlue
+                            contentDescription = "Press to Speak in Odia or English",
+                            tint = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
 
@@ -194,7 +214,7 @@ fun AITutorScreen(
                         onValueChange = { viewModel.onInputTextChanged(it) },
                         placeholder = {
                             Text(
-                                text = if (isRecording) "Listening... (କହନ୍ତୁ...)" else "Ask in Odia or English...",
+                                text = if (isRecording) "Listening in Odia/English..." else "Ask in Odia or English...",
                                 fontSize = 13.sp
                             )
                         },
@@ -226,7 +246,7 @@ fun AITutorScreen(
 }
 
 @Composable
-fun TutorMessageBubble(message: TutorMessage) {
+fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
     val isUser = message.sender == TutorSender.USER
 
     Row(
@@ -254,17 +274,23 @@ fun TutorMessageBubble(message: TutorMessage) {
                             Text("RelayNet AI Tutor", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                         }
 
+                        // Mandatory Origin Badge: [Offline Grounded] or [Cloud AI]
+                        val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
+                        val badgeText = if (isOfflineGrounded) "[Offline Grounded]" else "[Cloud AI]"
+                        val badgeBg = if (isOfflineGrounded) SuccessGreen.copy(alpha = 0.15f) else AccentCyan.copy(alpha = 0.15f)
+                        val badgeTextColor = if (isOfflineGrounded) SuccessGreen else AccentCyan
+
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(if (message.isOfflineGrounded) SuccessGreen.copy(alpha = 0.15f) else AccentCyan.copy(alpha = 0.15f))
+                                .background(badgeBg)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = if (message.isOfflineGrounded) "Offline Grounded" else "Live Cloud",
-                                fontSize = 9.sp,
+                                text = badgeText,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (message.isOfflineGrounded) SuccessGreen else AccentCyan
+                                color = badgeTextColor
                             )
                         }
                     }
@@ -304,4 +330,62 @@ fun TutorMessageBubble(message: TutorMessage) {
             }
         }
     }
+}
+
+@Composable
+fun VoiceWaveformIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val waveAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+            .padding(10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = Icons.Default.GraphicEq,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error.copy(alpha = waveAlpha),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Listening to Odia/English voice input... Speak now",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+@Composable
+fun animateMicPulse(isRecording: Boolean): androidx.compose.runtime.State<Float> {
+    if (!isRecording) return androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1.0f) }
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    return infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
 }

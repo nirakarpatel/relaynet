@@ -13,17 +13,17 @@ object PilotCurriculumCatalog {
     fun getPilotLearningPack(): LearningPack {
         return LearningPack(
             packId = "relaynet_class9_science_photosynthesis_v1",
-            titleOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା (Photosynthesis)",
-            titleEnglish = "Photosynthesis & Plant Nutrition",
+            titleOdia = "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)",
+            titleEnglish = "Chapter 4: Photosynthesis & Plant Biochemistry",
             board = Board.ODISHA_STATE,
             classGrade = 9,
-            subject = "Science (Biology)",
-            chapterOdia = "ଅଧ୍ୟାୟ ୧: ଉଦ୍ଭିଦରେ ପୋଷଣ (Nutrition in Plants)",
-            chapterEnglish = "Chapter 1: Nutrition in Plants",
-            topicOdia = "ଆଲୋକ ଶ୍ଳେଷଣର କାର୍ଯ୍ୟପ୍ରଣାଳୀ ଓ ରାସାୟନିକ ପ୍ରକ୍ରିୟା",
-            topicEnglish = "Mechanism of Photosynthesis & Chemical Reactions",
+            subject = "Science (ବିଜ୍ଞାନ)",
+            chapterOdia = "ଅଧ୍ୟାୟ ୪: ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା",
+            chapterEnglish = "Chapter 4: Photosynthesis",
+            topicOdia = "ଆଲୋକ ଶ୍ଳେଷଣର କାର୍ଯ୍ୟପ୍ରଣାଳୀ, ଫୋଟୋଲିସିସ୍ ଓ ରାସାୟନିକ ପ୍ରକ୍ରିୟା",
+            topicEnglish = "Mechanism of Photosynthesis, Photolysis & Chemical Reactions",
             version = 1,
-            sizeBytes = 148500,
+            sizeBytes = 1887436L, // 1.8 MB
             checksumSha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
             isDownloaded = true,
             isReceivedViaMesh = false,
@@ -31,85 +31,91 @@ object PilotCurriculumCatalog {
             lesson = LessonData(
                 summaryOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ଏକ ଜୈବ-ରାସାୟନିକ ପ୍ରକ୍ରିୟା ଯେଉଁଥିରେ ସବୁଜ ଉଦ୍ଭିଦ ସୂର୍ଯ୍ୟାଲୋକ, କ୍ଲୋରୋଫିଲ୍, ବାୟୁମଣ୍ଡଳର ଅଙ୍ଗାରକାମ୍ଳ (CO₂) ଏବଂ ମାଟିରୁ ଜଳ (H₂O) ବ୍ୟବହାର କରି ଶର୍କରା (ଗ୍ଲୁକୋଜ୍) ପ୍ରସ୍ତୁତ କରେ ଏବଂ ଅମ୍ଳଜାନ (O₂) ଉପ-ଉତ୍ପାଦ ଭାବରେ ଛାଡିଥାଏ।",
                 summaryEnglish = "Photosynthesis is the biochemical process by which green plants synthesize organic food (glucose) from carbon dioxide (CO₂) and water (H₂O) using solar energy trapped by chlorophyll, releasing oxygen (O₂) as a byproduct.",
-                equationOrFormula = "6CO₂ + 12H₂O ──[ସୂର୍ଯ୍ୟାଲୋକ / କ୍ଲୋରୋଫିଲ୍]──► C₆H₁₂O₆ + 6H₂O + 6O₂ ↑",
+                equationOrFormula = "6CO₂ + 12H₂O ──[Chlorophyll / Sunlight]──> C₆H₁₂O₆ + 6O₂ + 6H₂O",
                 sections = listOf(
                     LessonSection(
                         titleOdia = "୧. ଆଲୋକ ଶ୍ଳେଷଣର ଆବଶ୍ୟକ ଉପାଦାନ",
-                        titleEnglish = "1. Essential Components of Photosynthesis",
+                        titleEnglish = "1. Essential Raw Materials & Solar Absorption",
                         contentOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ସମ୍ପାଦନ ପାଇଁ ଚାରୋଟି ମୁଖ୍ୟ ଉପାଦାନ ଅପରିହାର୍ଯ୍ୟ:\n" +
-                                "• ସୂର୍ଯ୍ୟାଲୋକ (Solar Energy): ଶକ୍ତିର ମୁଖ୍ୟ ଉତ୍ସ ଭାବରେ କାର୍ଯ୍ୟ କରେ।\n" +
+                                "• ସୂର୍ଯ୍ୟାଲୋକ (Solar Radiation): ଶକ୍ତିର ମୁଖ୍ୟ ଉତ୍ସ ଭାବରେ କାର୍ଯ୍ୟ କରେ।\n" +
                                 "• କ୍ଲୋରୋଫିଲ୍ (Chlorophyll): ପତ୍ରର ହରିତକଣିକା (Chloroplast) ରେ ଥିବା ସବୁଜ ରଙ୍ଗକଣିକା ଯାହା ଆଲୋକ ଶୋଷଣ କରେ।\n" +
                                 "• ଅଙ୍ଗାରକାମ୍ଳ ବାଷ୍ପ (CO₂): ପତ୍ରରେ ଥିବା ଷ୍ଟୋମାଟା (Stomata) ମାଧ୍ୟମରେ ବାୟୁମଣ୍ଡଳରୁ ପ୍ରବେଶ କରେ।\n" +
                                 "• ଜଳ (H₂O): ମୂଳରୋମ ଦ୍ୱାରା ମାଟିରୁ ଶୋଷିତ ହୋଇ ଜାଇଲେମ (Xylem) ତନ୍ତୁ ଦେଇ ପତ୍ରକୁ ପହଞ୍ଚେ।",
                         contentEnglish = "Four essential raw materials are required for photosynthesis:\n" +
-                                "• Solar Light: Provides radiant energy to drive biochemical synthesis.\n" +
-                                "• Chlorophyll: The green pigment inside chloroplasts that traps photons.\n" +
-                                "• Carbon Dioxide (CO₂): Absorbed from atmosphere via microscopic stomata pores.\n" +
-                                "• Water (H₂O): Absorbed by root hair and transported to leaves via xylem vessels.",
+                                "• Solar Radiation: Provides radiant photon energy to drive biochemical synthesis.\n" +
+                                "• Chlorophyll: The green pigment inside chloroplast thylakoids that traps light.\n" +
+                                "• Carbon Dioxide (CO₂): Absorbed from atmosphere via microscopic stomatal pores.\n" +
+                                "• Water (H₂O): Absorbed by root hairs and transported to leaves via xylem vessels.",
                         keyTerms = listOf(
                             KeyTerm(
-                                termOdia = "କ୍ଲୋରୋଫିଲ୍ (Chlorophyll)",
-                                termEnglish = "Chlorophyll",
-                                definitionOdia = "ପତ୍ରର କ୍ଲୋରୋପ୍ଲାଷ୍ଟରେ ଥିବା ସବୁଜ ରଙ୍ଗକଣିକା ଯାହା ସୂର୍ଯ୍ୟାଲୋକ ଫୋଟନ୍ କଣିକା ଶୋଷଣ କରେ।",
-                                definitionEnglish = "The green pigment located in thylakoid membranes of chloroplasts that absorbs light energy."
+                                termOdia = " Photolysis / ଜଳ ବିଘଟନ",
+                                termEnglish = "Photolysis of Water",
+                                definitionOdia = "ଆଲୋକ ପ୍ରକ୍ରିୟା ସମୟରେ କ୍ଲୋରୋଫିଲ୍ ଶକ୍ତି ଦ୍ୱାରା ଜଳ ଅଣୁ (H₂O) ର ଭାଙ୍ଗିବା ଯାହାଦ୍ୱାରା ଅମ୍ଳଜାନ (O₂) ନିର୍ଗତ ହୁଏ।",
+                                definitionEnglish = "Light-driven splitting of water molecules in thylakoids, which releases oxygen gas and free electrons."
                             ),
                             KeyTerm(
-                                termOdia = "ଷ୍ଟୋମାଟା (Stomata)",
-                                termEnglish = "Stomata",
-                                definitionOdia = "ପତ୍ରର ତଳ ପୃଷ୍ଠରେ ଥିବା କ୍ଷୁଦ୍ର ରନ୍ଧ୍ର ଯାହା ବାଷ୍ପୀୟ ଆଦାନ-ପ୍ରଦାନ ଓ ପ୍ରସ୍ୱେଦନ ନିୟନ୍ତ୍ରଣ କରେ।",
-                                definitionEnglish = "Microscopic pores on leaf epidermis regulated by guard cells for gaseous exchange."
+                                termOdia = "Stomata / ସ୍ତୋମ",
+                                termEnglish = "Stomata & Guard Cells",
+                                definitionOdia = "ପତ୍ରର ତଳ ପୃଷ୍ଠରେ ଥିବା କ୍ଷୁଦ୍ର ରନ୍ଧ୍ର ଯାହା ବାଷ୍ପୀୟ ଆଦାନ-ପ୍ରଦାନ (CO₂ & O₂) ଏବଂ ପ୍ରସ୍ୱେଦନ ନିୟନ୍ତ୍ରଣ କରେ।",
+                                definitionEnglish = "Microscopic epidermal pores flanked by guard cells regulating photosynthetic gas exchange and transpiration."
+                            ),
+                            KeyTerm(
+                                termOdia = "Chlorophyll / କ୍ଲୋରୋଫିଲ୍",
+                                termEnglish = "Chlorophyll Pigment",
+                                definitionOdia = "ପତ୍ରର କ୍ଲୋରୋପ୍ଲାଷ୍ଟ ଗ୍ରାନାରେ ଥିବା ପ୍ରାଥମିକ ସବୁଜ ରଙ୍ଗକଣିକା ଯାହା ସୌର ଆଲୋକ ଫୋଟନ୍ ଗ୍ରହଣ କରେ।",
+                                definitionEnglish = "Primary photosynthetic pigment located in thylakoid membranes that absorbs blue and red spectrum photons."
                             )
                         )
                     ),
                     LessonSection(
                         titleOdia = "୨. ଦୁଇଟି ମୁଖ୍ୟ ପର୍ଯ୍ୟାୟ: ଆଲୋକ ଓ ଅନ୍ଧକାର ପ୍ରକ୍ରିୟା",
-                        titleEnglish = "2. Two Stages: Light & Dark Reactions",
+                        titleEnglish = "2. Two Stages: Light Reaction & Calvin Cycle",
                         contentOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ମୁଖ୍ୟତଃ ଦୁଇଟି କ୍ରମିକ ପର୍ଯ୍ୟାୟରେ ଘଟିଥାଏ:\n" +
                                 "କ) ଆଲୋକ ପ୍ରକ୍ରିୟା (Light Reaction / Hill Reaction):\n" +
-                                "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଗ୍ରାନା (Grana) ରେ ଘଟେ। ଏଠାରେ ଆଲୋକ ଶକ୍ତି ରାସାୟନିକ ଶକ୍ତି (ATP ଓ NADPH) ରେ ରୂପାନ୍ତରିତ ହୁଏ ଏବଂ ଜଳର ଫୋଟୋଲିସିସ୍ ଘଟି ଅମ୍ଳଜାନ (O₂) ନିର୍ଗତ ହୁଏ।\n\n" +
+                                "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଗ୍ରାନା (Grana) ରେ ଘଟେ। ଏଠାରେ ଆଲୋକ ଶକ୍ତି ରାସାୟନିକ ଶକ୍ତି (ATP ଓ NADPH) ରେ ରୂପାନ୍ତରିତ ହୁଏ ଏବଂ ଜଳର ଫୋଟୋଲିସିସ୍ (Photolysis) ଘଟି ଅମ୍ଳଜାନ (O₂) ନିର୍ଗତ ହୁଏ।\n\n" +
                                 "ଖ) ଅନ୍ଧକାର ପ୍ରକ୍ରିୟା (Dark Reaction / Calvin Cycle):\n" +
-                                "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଷ୍ଟ୍ରୋମା (Stroma) ରେ ଘଟେ। ଏଥିପାଇଁ ସିଧାସଳଖ ଆଲୋକ ଆବଶ୍ୟକ ହୁଏ ନାହିଁ। ଏଠାରେ CO₂ ବିଜାରିତ ହୋଇ ଗ୍ଲୁକୋଜ୍ ଶର୍କରା ଉତ୍ପନ୍ନ ହୁଏ।",
+                                "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଷ୍ଟ୍ରୋମା (Stroma) ରେ ଘଟେ। ଏଥିପାଇଁ ସିଧାସଳଖ ଆଲୋକ ଆବଶ୍ୟକ ହୁଏ ନାହିଁ। ଏଠାରେ CO₂ ବିଜାରିତ ହୋଇ ଗ୍ଲୁକୋଜ୍ (C₆H₁₂O₆) ଶର୍କରା ଉତ୍ପନ୍ନ ହୁଏ।",
                         contentEnglish = "Photosynthesis operates in two coupled sequential phases:\n" +
                                 "A) Light-Dependent Reaction (Grana):\n" +
-                                "Occurs in chloroplast grana thylakoids. Photons excite electrons, producing ATP and NADPH, accompanied by photolysis of water which releases O₂.\n\n" +
+                                "Occurs in chloroplast thylakoid stacks (Grana). Photons excite electrons, generating ATP & NADPH, accompanied by photolysis of water which splits H₂O and liberates O₂.\n\n" +
                                 "B) Light-Independent Reaction (Calvin Cycle / Stroma):\n" +
-                                "Takes place in chloroplast stroma matrix. Uses ATP and NADPH to reduce CO₂ into carbohydrates (glucose)."
+                                "Takes place in chloroplast stroma matrix. Uses assimilation power (ATP & NADPH) to reduce atmospheric CO₂ into carbohydrates (glucose)."
                     )
                 )
             ),
             quizQuestions = listOf(
                 QuizQuestion(
                     id = "q1_photosynthesis",
-                    questionOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟାରେ ନିର୍ଗତ ହେଉଥିବା ଅମ୍ଳଜାନ (O₂) ର ପ୍ରକୃତ ଉତ୍ସ କ'ଣ?",
-                    questionEnglish = "What is the actual source of oxygen (O₂) released during photosynthesis?",
+                    questionOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟାରେ ଅମ୍ଳଜାନ କେଉଁଥିରୁ ନିର୍ଗତ ହୁଏ?",
+                    questionEnglish = "In photosynthesis, oxygen is released from which compound?",
                     optionsOdia = listOf(
-                        "କ) ଅଙ୍ଗାରକାମ୍ଳ (CO₂)",
-                        "ଖ) ଜଳ (H₂O)",
-                        "ଗ) ଗ୍ଲୁକୋଜ୍ (C₆H₁₂O₆)",
-                        "ଘ) କ୍ଲୋରୋଫିଲ୍"
+                        "A) CO₂ (ଅଙ୍ଗାରକାମ୍ଳ)",
+                        "B) H₂O (ଜଳ)",
+                        "C) Chlorophyll (କ୍ଲୋରୋଫିଲ୍)",
+                        "D) Glucose (ଗ୍ଲୁକୋଜ୍)"
                     ),
                     optionsEnglish = listOf(
-                        "A) Carbon Dioxide (CO₂)",
-                        "B) Water (H₂O)",
-                        "C) Glucose (C₆H₁₂O₆)",
-                        "D) Chlorophyll"
+                        "A) CO₂",
+                        "B) H₂O",
+                        "C) Chlorophyll",
+                        "D) Glucose"
                     ),
                     correctIndex = 1,
                     explanationOdia = "ଜଳର ଆଲୋକ ବିଭାଜନ (Photolysis of water) ଫଳରେ ଅମ୍ଳଜାନ ଗ୍ୟାସ୍ ନିର୍ଗତ ହୁଏ, ଅଙ୍ଗାରକାମ୍ଳରୁ ନୁହେଁ।",
-                    explanationEnglish = "Photolysis of water molecules during the light reaction breaks H₂O into protons, electrons, and releases O₂ gas.",
+                    explanationEnglish = "Photolysis of water molecules during the light-dependent reaction splits H₂O into protons, electrons, and releases O₂ gas.",
                     conceptTag = "photolysis_water_source",
-                    misconceptionHintOdia = "ସାଧାରଣ ଭୁଲ୍ ଧାରଣା: ଅନେକ ଭାବନ୍ତି O₂ ଅଙ୍ଗାରକାମ୍ଳରୁ ଆସେ, କିନ୍ତୁ ପ୍ରକୃତରେ ଏହା ଜଳ (H₂O) ରୁ ହିଁ ନିର୍ଗତ ହୁଏ।",
-                    misconceptionHintEnglish = "Common misconception: Many students incorrectly assume O₂ comes from CO₂, but experiments prove it originates entirely from H₂O photolysis."
+                    misconceptionHintOdia = "⚠️ Concept Gap Detected: You selected CO₂. However, photolysis of water (H₂O) during light reactions is what splits and releases O₂, not CO₂.",
+                    misconceptionHintEnglish = "⚠️ Concept Gap Detected: You selected CO₂. However, photolysis of water (H₂O) during light reactions is what splits and releases O₂, not CO₂."
                 ),
                 QuizQuestion(
                     id = "q2_chloroplast_site",
                     questionOdia = "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର କେଉଁ ଭାଗରେ ଆଲୋକ ପ୍ରକ୍ରିୟା (Light reaction) ସମ୍ପନ୍ନ ହୁଏ?",
                     questionEnglish = "In which region of the chloroplast does the light-dependent reaction occur?",
                     optionsOdia = listOf(
-                        "କ) ଷ୍ଟ୍ରୋମା (Stroma)",
-                        "ଖ) ଗ୍ରାନା (Grana)",
-                        "ଗ) କୋଷଜୀବକ (Cytoplasm)",
-                        "ଘ) ମାଇଟୋକଣ୍ଡ୍ରିଆ"
+                        "A) ଷ୍ଟ୍ରୋମା (Stroma)",
+                        "B) ଗ୍ରାନା (Grana / Thylakoids)",
+                        "C) କୋଷଜୀବକ (Cytoplasm)",
+                        "D) ମାଇଟୋକଣ୍ଡ୍ରିଆ"
                     ),
                     optionsEnglish = listOf(
                         "A) Stroma",
@@ -121,22 +127,22 @@ object PilotCurriculumCatalog {
                     explanationOdia = "କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଥାଇଲାକଏଡ୍ ଗଦା ବା ଗ୍ରାନା (Grana) ରେ ଆଲୋକ ପ୍ରକ୍ରିୟା ଘଟେ। ଷ୍ଟ୍ରୋମାରେ ଅନ୍ଧକାର ପ୍ରକ୍ରିୟା ଘଟେ।",
                     explanationEnglish = "The light reaction occurs in thylakoid stacks called Grana where chlorophyll is embedded. Dark reactions occur in Stroma.",
                     conceptTag = "chloroplast_anatomy_site",
-                    misconceptionHintOdia = "ମନେରଖନ୍ତୁ: ଗ୍ରାନା = ଆଲୋକ (Light); ଷ୍ଟ୍ରୋମା = ଅନ୍ଧକାର/କ୍ୟାଲଭିନ୍ ଚକ୍ର (Dark).",
-                    misconceptionHintEnglish = "Memory aid: Grana = Green/Light absorbing; Stroma = Soluble matrix for Dark/Calvin synthesis."
+                    misconceptionHintOdia = "⚠️ Concept Gap Detected: You selected Stroma. Stroma is where dark reactions/Calvin cycle take place; light reactions occur in Grana.",
+                    misconceptionHintEnglish = "⚠️ Concept Gap Detected: You selected Stroma. Stroma is where dark reactions/Calvin cycle take place; light reactions occur in Grana."
                 ),
                 QuizQuestion(
                     id = "q3_gas_exchange",
                     questionOdia = "ପତ୍ରରେ ଗ୍ୟାସୀୟ ଆଦାନପ୍ରଦାନ କାହା ଦ୍ୱାରା ନିୟନ୍ତ୍ରିତ ହୁଏ?",
-                    questionEnglish = "Which structure regulates gaseous exchange in plant leaves?",
+                    questionEnglish = "Which structure regulates photosynthetic gaseous exchange in plant leaves?",
                     optionsOdia = listOf(
-                        "କ) ଜାଇଲେମ (Xylem)",
-                        "ଖ) ଷ୍ଟୋମାଟା ଏବଂ ତାହାର ରକ୍ଷୀ କୋଷ (Guard cells)",
-                        "ଗ) ଫ୍ଲୋଏମ୍ (Phloem)",
-                        "ଘ) ମୂଳରୋମ"
+                        "A) ଜାଇଲେମ (Xylem)",
+                        "B) ଷ୍ଟୋମାଟା / ସ୍ତୋମ (Stomata and Guard Cells)",
+                        "C) ଫ୍ଲୋଏମ୍ (Phloem)",
+                        "D) ମୂଳରୋମ (Root Hairs)"
                     ),
                     optionsEnglish = listOf(
                         "A) Xylem",
-                        "B) Stomata and its Guard Cells",
+                        "B) Stomata and Guard Cells",
                         "C) Phloem",
                         "D) Root Hairs"
                     ),
@@ -144,22 +150,22 @@ object PilotCurriculumCatalog {
                     explanationOdia = "ଷ୍ଟୋମାଟା ରନ୍ଧ୍ରର ଖୋଲିବା ଓ ବନ୍ଦ ହେବା ରକ୍ଷୀ କୋଷ (Guard cells) ଦ୍ୱାରା ନିୟନ୍ତ୍ରିତ ହୋଇ ବାୟୁମଣ୍ଡଳ ସହ CO₂ ଏବଂ O₂ ବିନିମୟ ହୁଏ।",
                     explanationEnglish = "Stomatal pores open and close via turgor pressure changes in surrounding guard cells to regulate CO₂ intake and transpiration.",
                     conceptTag = "stomata_regulation",
-                    misconceptionHintOdia = "ଜାଇଲେମ୍ ଓ ଫ୍ଲୋଏମ୍ ପରିବହନ ତନ୍ତୁ; କିନ୍ତୁ ଗ୍ୟାସ ବିନିମୟ ଷ୍ଟୋମାଟା ଦ୍ୱାରା ହିଁ ହୁଏ।",
-                    misconceptionHintEnglish = "Xylem and phloem conduct sap; gas exchange is strictly governed by stomata."
+                    misconceptionHintOdia = "⚠️ Concept Gap Detected: Xylem and phloem are vascular transport tissues; gas exchange is regulated by stomata.",
+                    misconceptionHintEnglish = "⚠️ Concept Gap Detected: Xylem and phloem are vascular transport tissues; gas exchange is regulated by stomata."
                 ),
                 QuizQuestion(
                     id = "q4_end_product",
                     questionOdia = "ଅନ୍ଧକାର ପ୍ରକ୍ରିୟା (Calvin Cycle) ର ମୁଖ୍ୟ ସ୍ଥାୟୀ ଉତ୍ପାଦ କ'ଣ?",
                     questionEnglish = "What is the primary organic product synthesized in the Calvin cycle?",
                     optionsOdia = listOf(
-                        "କ) ସୁକ୍ରୋଜ୍",
-                        "ଖ) ଗ୍ଲୁକୋଜ୍ ଶର୍କରା (Glucose)",
-                        "ଗ) ଆମିନୋ ଏସିଡ୍",
-                        "ଘ) ସେଲୁଲୋଜ୍"
+                        "A) ସୁକ୍ରୋଜ୍ (Sucrose)",
+                        "B) ଗ୍ଲୁକୋଜ୍ (C₆H₁₂O₆ Glucose)",
+                        "C) ଆମିନୋ ଏସିଡ୍ (Amino Acid)",
+                        "D) ସେଲୁଲୋଜ୍ (Cellulose)"
                     ),
                     optionsEnglish = listOf(
                         "A) Sucrose",
-                        "B) Glucose (Simple Carbohydrate)",
+                        "B) Glucose (C₆H₁₂O₆)",
                         "C) Amino Acid",
                         "D) Cellulose"
                     ),
@@ -167,18 +173,18 @@ object PilotCurriculumCatalog {
                     explanationOdia = "କ୍ୟାଲଭିନ୍ ଚକ୍ରରେ CO₂ ର ସ୍ଥିରୀକରଣ ଘଟି ପ୍ରାଥମିକ ଭାବରେ ଗ୍ଲୁକୋଜ୍ ଶର୍କରା ସୃଷ୍ଟି ହୁଏ, ଯାହା ପରେ ଷ୍ଟାର୍ଚରେ ସଞ୍ଚିତ ହୁଏ।",
                     explanationEnglish = "In the Calvin cycle, CO₂ fixation utilizes ATP and NADPH to synthesize glucose, which later condenses into storage starch.",
                     conceptTag = "calvin_cycle_product",
-                    misconceptionHintOdia = "ଉଦ୍ଭିଦ ପ୍ରଥମେ ଗ୍ଲୁକୋଜ୍ ତିଆରି କରେ ଏବଂ ପରେ ତାହାକୁ ଷ୍ଟାର୍ଚ (ଶ୍ୱେତସାର) ଭାବରେ ସାଇତି ରଖେ।",
-                    misconceptionHintEnglish = "Plants first synthesize simple glucose monomers before storing them as starch polysaccharides."
+                    misconceptionHintOdia = "⚠️ Concept Gap Detected: Plants synthesize simple glucose monomers first during Calvin cycle before storing as starch.",
+                    misconceptionHintEnglish = "⚠️ Concept Gap Detected: Plants synthesize simple glucose monomers first during Calvin cycle before storing as starch."
                 ),
                 QuizQuestion(
                     id = "q5_energy_transfer",
                     questionOdia = "ଆଲୋକ ଶ୍ଳେଷଣରେ ସୌରଶକ୍ତି କେଉଁ ଶକ୍ତିକୁ ରୂପାନ୍ତରିତ ହୁଏ?",
                     questionEnglish = "During photosynthesis, solar energy is converted into which form of energy?",
                     optionsOdia = listOf(
-                        "କ) ଯାନ୍ତ୍ରିକ ଶକ୍ତି",
-                        "ଖ) ତାପ ଶକ୍ତି",
-                        "ଗ) ରାସାୟନିକ ଶକ୍ତି (Chemical Energy)",
-                        "ଘ) ଚୁମ୍ବକୀୟ ଶକ୍ତି"
+                        "A) ଯାନ୍ତ୍ରିକ ଶକ୍ତି (Mechanical Energy)",
+                        "B) ତାପ ଶକ୍ତି (Thermal Energy)",
+                        "C) ରାସାୟନିକ ଶକ୍ତି (Chemical Energy)",
+                        "D) ଚୁମ୍ବକୀୟ ଶକ୍ତି (Magnetic Energy)"
                     ),
                     optionsEnglish = listOf(
                         "A) Mechanical Energy",
@@ -190,8 +196,8 @@ object PilotCurriculumCatalog {
                     explanationOdia = "ସୂର୍ଯ୍ୟଙ୍କ ଆଲୋକ ଶକ୍ତି ଗ୍ଲୁକୋଜ୍ ଅଣୁର ରାସାୟନିକ ବନ୍ଧନ (Chemical bonds) ରେ ରାସାୟନିକ ଶକ୍ତି ଭାବେ ଆବଦ୍ଧ ହୁଏ।",
                     explanationEnglish = "Solar radiant energy is transduced and stored in covalent chemical bonds of organic carbohydrate molecules.",
                     conceptTag = "energy_transduction",
-                    misconceptionHintOdia = "ଶକ୍ତି ନଷ୍ଟ ହୁଏ ନାହିଁ; ସୌରଶକ୍ତି ଜୈବ-ରାସାୟନିକ ଶକ୍ତିରେ ପରିଣତ ହୁଏ।",
-                    misconceptionHintEnglish = "Radiant energy is conserved by transduction into biochemical potential energy."
+                    misconceptionHintOdia = "⚠️ Concept Gap Detected: Solar photon energy is converted into biochemical potential energy stored in covalent bonds.",
+                    misconceptionHintEnglish = "⚠️ Concept Gap Detected: Solar photon energy is converted into biochemical potential energy stored in covalent bonds."
                 )
             )
         )
@@ -203,11 +209,11 @@ object PilotCurriculumCatalog {
                 id = "curr-node-1",
                 board = Board.ODISHA_STATE,
                 classGrade = 9,
-                subject = "Science (Biology)",
-                chapterTitleOdia = "ଅଧ୍ୟାୟ ୧: ଉଦ୍ଭିଦରେ ପୋଷଣ (Nutrition in Plants)",
-                chapterTitleEnglish = "Chapter 1: Nutrition in Plants",
-                topicTitleOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା (Photosynthesis)",
-                topicTitleEnglish = "Mechanism of Photosynthesis",
+                subject = "Science (ବିଜ୍ଞାନ)",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୪: ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା",
+                chapterTitleEnglish = "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)",
+                topicTitleOdia = "ଆଲୋକ ଶ୍ଳେଷଣର କାର୍ଯ୍ୟପ୍ରଣାଳୀ, ଫୋଟୋଲିସିସ୍ ଓ ରାସାୟନିକ ପ୍ରକ୍ରିୟା",
+                topicTitleEnglish = "Mechanism of Photosynthesis & Chemical Reactions",
                 learningObjectiveOdia = "ସବୁଜ ଉଦ୍ଭିଦରେ ଆଲୋକ ଓ ଅନ୍ଧକାର ପ୍ରକ୍ରିୟାର ସମୀକରଣ ଓ କାର୍ଯ୍ୟପ୍ରଣାଳୀ ବୁଝିବା।",
                 learningObjectiveEnglish = "Master the biochemical pathways of light and dark reactions.",
                 packId = "relaynet_class9_science_photosynthesis_v1",
@@ -217,7 +223,7 @@ object PilotCurriculumCatalog {
                 id = "curr-node-2",
                 board = Board.CBSE,
                 classGrade = 9,
-                subject = "Science (Physics)",
+                subject = "Science (ବିଜ୍ଞାନ)",
                 chapterTitleOdia = "ଅଧ୍ୟାୟ ୯: ବଳ ଏବଂ ଗତିର ନିୟମ",
                 chapterTitleEnglish = "Chapter 9: Force and Laws of Motion",
                 topicTitleOdia = "ନ୍ୟୁଟନଙ୍କ ତିନୋଟି ଗତି ନିୟମ ଓ ସଂବେଗ ସଂରକ୍ଷଣ",
@@ -231,8 +237,8 @@ object PilotCurriculumCatalog {
                 id = "curr-node-3",
                 board = Board.ODISHA_STATE,
                 classGrade = 10,
-                subject = "Science (Life Science)",
-                chapterTitleOdia = "ଅଧ୍ୟାୟ ୨: ଶ୍ୱସନ ଓ ରକ୍ତ ସଞ୍ଚାଳନ (Respiration & Circulation)",
+                subject = "Science (ବିଜ୍ଞାନ)",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୨: ଶ୍ୱସନ ଓ ରକ୍ତ ସଞ୍ଚାଳନ",
                 chapterTitleEnglish = "Chapter 2: Respiration and Circulation",
                 topicTitleOdia = "ମାନବ ଶ୍ୱସନ ତନ୍ତ୍ର ଓ ମାନବ ହୃତ୍‌ପିଣ୍ଡର ଗଠନ",
                 topicTitleEnglish = "Human Respiratory System & Heart Anatomy",
@@ -246,7 +252,7 @@ object PilotCurriculumCatalog {
                 board = Board.CISCE_ICSE,
                 classGrade = 9,
                 subject = "Mathematics",
-                chapterTitleOdia = "ଅଧ୍ୟାୟ ୪: ରୈଖିକ ସମୀକରଣ (Linear Equations)",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୪: ରୈଖିକ ସମୀକରଣ",
                 chapterTitleEnglish = "Chapter 4: Simultaneous Linear Equations",
                 topicTitleOdia = "ଦୁଇ ଅଜ୍ଞାତ ରାଶି ବିଶିଷ୍ଟ ଯୁଗପତ ସମୀକରଣ ସମାଧାନ",
                 topicTitleEnglish = "Elimination & Substitution Methods",
@@ -261,28 +267,28 @@ object PilotCurriculumCatalog {
     fun getOfflineTutorResponse(question: String): Pair<String, String> {
         val qLower = question.lowercase()
         return when {
-            qLower.contains("photosynthesis") || qLower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") || qLower.contains("କଣ") || qLower.contains("what") -> {
+            qLower.contains("photosynthesis") || qLower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") || qLower.contains("କଣ") || qLower.contains("explain") || qLower.contains("ବୁଝାନ୍ତୁ") -> {
                 Pair(
-                    "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ସବୁଜ ଉଦ୍ଭିଦଙ୍କର ଖାଦ୍ୟ ପ୍ରସ୍ତୁତି ପ୍ରଣାଳୀ। ସବୁଜ ପତ୍ରରେ ଥିବା କ୍ଲୋରୋଫିଲ୍ ସୂର୍ଯ୍ୟାଲୋକ ଶୋଷଣ କରେ, ଚେର ମାଟିରୁ ଜଳ (H₂O) ଆଣେ ଏବଂ ଷ୍ଟୋମାଟା ବାୟୁରୁ CO₂ ଗ୍ରହଣ କରେ। ଏହି ପ୍ରକ୍ରିୟାରେ ଗ୍ଲୁକୋଜ୍ (ଖାଦ୍ୟ) ତିଆରି ହୁଏ ଏବଂ ଜୀବଜଗତ ପାଇଁ ଅମ୍ଳଜାନ (O₂) ବାୟୁମଣ୍ଡଳକୁ ମୁକ୍ତ ହୁଏ।\n\nରାସାୟନିକ ସମୀକରଣ:\n6CO₂ + 12H₂O ──► C₆H₁₂O₆ + 6H₂O + 6O₂ ↑",
-                    "Photosynthesis is the process by which green plants manufacture glucose from CO₂ and H₂O using solar energy absorbed by chlorophyll, releasing vital O₂ as a byproduct.\n\nBalanced Equation:\n6CO₂ + 12H₂O ──► C₆H₁₂O₆ + 6H₂O + 6O₂ ↑"
+                    "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ସବୁଜ ଉଦ୍ଭିଦଙ୍କର ଖାଦ୍ୟ ପ୍ରସ୍ତୁତି ପ୍ରଣାଳୀ। ସବୁଜ ପତ୍ରରେ ଥିବା କ୍ଲୋରୋଫିଲ୍ ସୂର୍ଯ୍ୟାଲୋକ ଶୋଷଣ କରେ, ଚେର ମାଟିରୁ ଜଳ (H₂O) ଆଣେ ଏବଂ ଷ୍ଟୋମାଟା ବାୟୁରୁ CO₂ ଗ୍ରହଣ କରେ। ଏହି ପ୍ରକ୍ରିୟାରେ ଗ୍ଲୁକୋଜ୍ (ଖାଦ୍ୟ) ତିଆରି ହୁଏ ଏବଂ ଜୀବଜଗତ ପାଇଁ ଅମ୍ଳଜାନ (O₂) ବାୟୁମଣ୍ଡଳକୁ ମୁକ୍ତ ହୁଏ।\n\nସନ୍ତୁଳିତ ସମୀକରଣ:\n6CO₂ + 12H₂O ──[Chlorophyll / Sunlight]──> C₆H₁₂O₆ + 6O₂ + 6H₂O",
+                    "Photosynthesis is the process by which green plants manufacture glucose from CO₂ and H₂O using solar energy absorbed by chlorophyll, releasing vital O₂ as a byproduct.\n\nBalanced Equation:\n6CO₂ + 12H₂O ──[Chlorophyll / Sunlight]──> C₆H₁₂O₆ + 6O₂ + 6H₂O"
                 )
             }
-            qLower.contains("equation") || qLower.contains("ସମୀକରଣ") || qLower.contains("formula") -> {
+            qLower.contains("oxygen") || qLower.contains("ଅମ୍ଳଜାନ") || qLower.contains("come from") -> {
                 Pair(
-                    "ଆଲୋକ ଶ୍ଳେଷଣର ସନ୍ତୁଳିତ ରାସାୟନିକ ସମୀକରଣ:\n6CO₂ (ଅଙ୍ଗାରକାମ୍ଳ) + 12H₂O (ଜଳ) ──[ସୂର୍ଯ୍ୟାଲୋକ / କ୍ଲୋରୋଫିଲ୍]──► C₆H₁₂O₆ (ଗ୍ଲୁକୋଜ୍) + 6H₂O + 6O₂ (ଅମ୍ଳଜାନ)",
-                    "The balanced chemical equation of photosynthesis:\n6CO₂ + 12H₂O ──[Solar Light / Chlorophyll]──► C₆H₁₂O₆ (Glucose) + 6H₂O + 6O₂ ↑"
+                    "ଆଲୋକ ଶ୍ଳେଷଣରେ ନିର୍ଗତ ହେଉଥିବା ଅମ୍ଳଜାନ (O₂) ର ପ୍ରକୃତ ଉତ୍ସ ହେଉଛି ଜଳ (H₂O)। ଆଲୋକ ପ୍ରକ୍ରିୟାରେ କ୍ଲୋରୋଫିଲ୍ ଶକ୍ତି ଦ୍ୱାରା ଜଳର ଫୋଟୋଲିସିସ୍ (Photolysis of water) ଘଟି H₂O ଅଣୁ ଭାଙ୍ଗି ଅମ୍ଳଜାନ ଗ୍ୟାସ୍ ବାୟୁମଣ୍ଡଳକୁ ମୁକ୍ତ ହୁଏ, ଅଙ୍ଗାରକାମ୍ଳରୁ ନୁହେଁ।",
+                    "In photosynthesis, oxygen (O₂) is derived entirely from the photolysis of water (H₂O). During the light reaction, photons split water molecules into protons, electrons, and O₂ gas."
                 )
             }
-            qLower.contains("chlorophyll") || qLower.contains("କ୍ଲୋରୋଫିଲ") || qLower.contains("ହରିତକଣିକା") -> {
+            qLower.contains("translate") || qLower.contains("odia") || qLower.contains("ଓଡ଼ିଆରେ") -> {
                 Pair(
-                    "କ୍ଲୋରୋଫିଲ୍ ହେଉଛି ପତ୍ରର ହରିତକଣିକା (Chloroplast) ରେ ଥିବା ସବୁଜ ରଙ୍ଗକଣିକା। ଏହାର ପ୍ରମୁଖ କାର୍ଯ୍ୟ ହେଉଛି ସୂର୍ଯ୍ୟାଲୋକର ଫୋଟନ୍ ଶକ୍ତି ଶୋଷଣ କରି ରାସାୟନିକ ଶକ୍ତି (ATP ଓ NADPH) ରେ ପରିଣତ କରିବା।",
-                    "Chlorophyll is the green pigment in plant chloroplasts. Its primary function is trapping solar photons and converting radiant energy into chemical energy carriers (ATP & NADPH)."
+                    "ଓଡ଼ିଆ ଅନୁବାଦ: ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟାରେ ସୌରଶକ୍ତି ରାସାୟନିକ ଶକ୍ତିରେ ପରିଣତ ହୁଏ। ଜଳର ଆଲୋକ ବିଭାଜନ ଦ୍ୱାରା ଅମ୍ଳଜାନ ବାୟୁମଣ୍ଡଳରେ ମୁକ୍ତ ହୁଏ।",
+                    "Odia Translation: In photosynthesis, solar light energy transduces into chemical energy. Photolysis of water liberates oxygen gas into the atmosphere."
                 )
             }
             else -> {
                 Pair(
-                    "ଆପଣଙ୍କ ପ୍ରଶ୍ନ ପାଇଁ ଧନ୍ୟବାଦ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ ସିଲାବସ୍ ଅନୁଯାୟୀ ଆଲୋକ ଶ୍ଳେଷଣରେ ଉଦ୍ଭିଦ ମାଟିରୁ ଜଳ ଏବଂ ବାୟୁରୁ CO₂ ନେଇ ସୂର୍ଯ୍ୟାଲୋକରେ ଗ୍ଲୁକୋଜ୍ ପ୍ରସ୍ତୁତ କରେ। ଅଧିକ ଜାଣିବା ପାଇଁ ଅଧ୍ୟାୟ ୧ ପଢ଼ନ୍ତୁ କିମ୍ବା କୁଇଜ୍ ଅଭ୍ୟାସ କରନ୍ତୁ।",
-                    "According to the Class 9 Science curriculum, plants synthesize carbohydrates using atmospheric CO₂ and soil water under solar radiation. Check the Chapter 1 lesson and attempt the diagnostic quiz to test your mastery!"
+                    "ଆପଣଙ୍କ ପ୍ରଶ୍ନ ପାଇଁ ଧନ୍ୟବାଦ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ 'Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)' ଅନୁଯାୟୀ ଉଦ୍ଭିଦ ମାଟିରୁ ଜଳ ଏବଂ ବାୟୁରୁ CO₂ ନେଇ ସୂର୍ଯ୍ୟାଲୋକରେ ଗ୍ଲୁକୋଜ୍ ପ୍ରସ୍ତୁତ କରେ। ଅଧିକ ଜାଣିବା ପାଇଁ ପାଠ୍ୟପୁସ୍ତକ ପଢ଼ନ୍ତୁ କିମ୍ବା କୁଇଜ୍ ଅଭ୍ୟାସ କରନ୍ତୁ।",
+                    "According to Class 9 Science Chapter 4: Photosynthesis, plants synthesize glucose from atmospheric CO₂ and soil H₂O under solar radiation. Read the lesson summary and take the practice quiz to verify your conceptual mastery!"
                 )
             }
         }

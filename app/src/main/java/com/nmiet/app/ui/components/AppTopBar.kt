@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 fun AppTopBar(
     title: String,
     isOnline: Boolean,
+    connectedPeerName: String? = null,
     isRefreshing: Boolean = false,
     onRefreshClick: (() -> Unit)? = null,
     onBackClick: (() -> Unit)? = null,
@@ -52,51 +53,55 @@ fun AppTopBar(
         androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     }
 
-    TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        title = {
-            Column {
+    Column {
+        TopAppBar(
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = title,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OnlineOfflinePill(isOnline = isOnline)
                     if (isDemoMode) {
                         Spacer(modifier = Modifier.width(6.dp))
                         DemoModeBadge()
                     }
                 }
-            }
-        },
-        navigationIcon = {
-            if (onBackClick != null) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Navigate back"
-                    )
+            },
+            navigationIcon = {
+                if (onBackClick != null) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back"
+                        )
+                    }
+                }
+            },
+            actions = {
+                if (onRefreshClick != null) {
+                    IconButton(
+                        onClick = onRefreshClick,
+                        enabled = !isRefreshing
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh content feed",
+                            modifier = Modifier.rotate(rotation)
+                        )
+                    }
                 }
             }
-        },
-        actions = {
-            if (onRefreshClick != null) {
-                IconButton(
-                    onClick = onRefreshClick,
-                    enabled = !isRefreshing
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh content feed",
-                        modifier = Modifier.rotate(rotation)
-                    )
-                }
-            }
-        }
-    )
+        )
+
+        // Mandatory Top status banner composable across all screens
+        NetworkStatusBanner(
+            isOnline = isOnline,
+            connectedPeerName = connectedPeerName
+        )
+    }
 }

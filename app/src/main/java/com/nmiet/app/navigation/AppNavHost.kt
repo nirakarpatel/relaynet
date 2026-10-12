@@ -52,8 +52,8 @@ fun AppNavHost(
     val bottomNavItems = listOf(
         Screen.Curriculum,
         Screen.AITutor,
-        Screen.MeshShare,
         Screen.Mastery,
+        Screen.MeshShare,
         Screen.Settings
     )
 
@@ -111,12 +111,28 @@ fun AppNavHost(
                     },
                     onStartQuiz = { packId ->
                         navController.navigate(Routes.quizRunner(packId))
+                    },
+                    onShareViaBluetooth = {
+                        navController.navigate(Routes.MESH_SHARE) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
 
             composable(Routes.TUTOR) {
                 AITutorScreen(viewModel = aiTutorViewModel)
+            }
+
+            composable(Routes.MASTERY) {
+                MasteryScreen(
+                    viewModel = masteryViewModel,
+                    onPracticeTopic = { packId ->
+                        navController.navigate(Routes.quizRunner(packId))
+                    }
+                )
             }
 
             composable(Routes.MESH_SHARE) {
@@ -128,15 +144,6 @@ fun AppNavHost(
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
-                )
-            }
-
-            composable(Routes.MASTERY) {
-                MasteryScreen(
-                    viewModel = masteryViewModel,
-                    onPracticeTopic = { packId ->
-                        navController.navigate(Routes.quizRunner(packId))
                     }
                 )
             }

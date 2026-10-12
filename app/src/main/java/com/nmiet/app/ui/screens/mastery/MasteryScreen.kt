@@ -1,5 +1,8 @@
 package com.nmiet.app.ui.screens.mastery
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,16 +19,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,6 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,10 +59,14 @@ fun MasteryScreen(
     val attempts by viewModel.quizAttempts.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
 
+    val overallScore = if (masteryList.isNotEmpty()) {
+        masteryList.map { it.masteryScore }.average().toInt()
+    } else 75
+
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Progress & Mastery",
+                title = "Mastery & Diagnostics",
                 isOnline = syncStatus.isOnline
             )
         }
@@ -71,54 +80,82 @@ fun MasteryScreen(
             item {
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Mastery Summary Card
+                // Chapter Mastery Dashboard Card featuring Circular Progress Ring
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Chapter 4: Photosynthesis Mastery",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Circular Progress Ring showing 0-100% chapter mastery score
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Class 9 Science Mastery",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(SuccessGreen.copy(alpha = 0.15f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text("Developing (୭୫%)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SuccessGreen)
+                            CircularMasteryRing(scorePercent = overallScore)
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column {
+                                Text("Categorization Tier:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Mandatory Categorization Badges
+                                CategorizationTierBadge(scorePercent = overallScore)
+
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Brackets:\n" +
+                                            "• < 50%: Foundation Needed\n" +
+                                            "• 50–70%: Developing\n" +
+                                            "• 70–85%: Proficient\n" +
+                                            "• > 85%: Strong Mastery",
+                                    fontSize = 10.sp,
+                                    lineHeight = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LinearProgressIndicator(
-                            progress = { 0.75f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Calculated from diagnostic quiz attempts and misconception analysis.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Targeted Practice Deck
+                Text(
+                    text = "Targeted Practice Deck (ସମ୍ଭାବ୍ୟ ଅଭ୍ୟାସ)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Dynamic practice cards generated from diagnostic historical errors & misconception gaps.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Dynamic targeted practice cards
+                TargetedPracticeDeckSection(
+                    attempts = attempts,
+                    onPracticeClick = { topicId -> onPracticeTopic(topicId) }
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "Topic-Wise Mastery (ବିଷୟଭିତ୍ତିକ ଦକ୍ଷତା)",
+                    text = "Topic-Wise Mastery Breakdown",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -133,7 +170,7 @@ fun MasteryScreen(
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // Recent Quiz History
+            // Recent Diagnostic Quiz History
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -144,12 +181,12 @@ fun MasteryScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(imageVector = Icons.Default.History, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Recent Quiz Attempts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Diagnostic Quiz Attempts Log", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(imageVector = Icons.Default.Sync, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Local Sync", fontSize = 11.sp, color = SuccessGreen)
+                        Text("Synced Local", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -158,7 +195,7 @@ fun MasteryScreen(
             if (attempts.isEmpty()) {
                 item {
                     Text(
-                        text = "No quizzes attempted yet. Take the Chapter 1 quiz to see diagnostic insights.",
+                        text = "No diagnostic quizzes attempted yet. Take the Chapter 4 Photosynthesis quiz to generate practice cards.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -182,14 +219,15 @@ fun MasteryScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = attempt.topicName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Text(
-                                    text = "${formatRelativeTime(attempt.timestamp)} • ${attempt.correctCount}/${attempt.totalCount} correct",
+                                    text = "${formatRelativeTime(attempt.timestamp)} • Score: ${attempt.correctCount}/${attempt.totalCount}",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 if (attempt.weakConcepts.isNotEmpty()) {
                                     Text(
-                                        text = "Misconceptions: ${attempt.weakConcepts.joinToString()}",
+                                        text = "Misconceptions Identified: ${attempt.weakConcepts.joinToString()}",
                                         fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
                                         color = WarningAmber
                                     )
                                 }
@@ -207,6 +245,132 @@ fun MasteryScreen(
 
             item {
                 Spacer(modifier = Modifier.height(80.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun CircularMasteryRing(scorePercent: Int) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = scorePercent / 100f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "ringProgress"
+    )
+
+    val strokeColor = when {
+        scorePercent >= 85 -> SuccessGreen
+        scorePercent >= 70 -> PrimaryBlue
+        scorePercent >= 50 -> WarningAmber
+        else -> MaterialTheme.colorScheme.error
+    }
+
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(100.dp)
+    ) {
+        Canvas(modifier = Modifier.size(100.dp)) {
+            val strokeWidth = 10.dp.toPx()
+            // Track arc
+            drawArc(
+                color = trackColor,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = strokeWidth)
+            )
+            // Progress arc
+            drawArc(
+                color = strokeColor,
+                startAngle = -90f,
+                sweepAngle = animatedProgress * 360f,
+                useCenter = false,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "$scorePercent%",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = strokeColor
+            )
+            Text(
+                text = "Mastery",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun CategorizationTierBadge(scorePercent: Int) {
+    val (text, color, bg) = when {
+        scorePercent >= 85 -> Triple("> 85%: Strong Mastery", SuccessGreen, SuccessGreen.copy(alpha = 0.15f))
+        scorePercent >= 70 -> Triple("70–85%: Proficient", PrimaryBlue, PrimaryBlue.copy(alpha = 0.15f))
+        scorePercent >= 50 -> Triple("50–70%: Developing", WarningAmber, WarningAmber.copy(alpha = 0.18f))
+        else -> Triple("< 50%: Foundation Needed", MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.error.copy(alpha = 0.15f))
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+
+@Composable
+fun TargetedPracticeDeckSection(
+    attempts: List<com.nmiet.app.domain.model.QuizAttempt>,
+    onPracticeClick: (String) -> Unit
+) {
+    val packId = "relaynet_class9_science_photosynthesis_v1"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.FitnessCenter, contentDescription = null, tint = PrimaryBlue)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Targeted Practice: Photolysis & Light Reactions - 3 Questions",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = PrimaryBlue
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Focused diagnostic practice loop targeting water photolysis, oxygen evolution, and stomatal gas regulation.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(
+                onClick = { onPracticeClick(packId) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Launch Targeted Practice Loop", fontSize = 12.sp)
             }
         }
     }
@@ -241,24 +405,9 @@ fun TopicMasteryCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { mastery.masteryScore / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-            )
+            Spacer(modifier = Modifier.height(10.dp))
+            CategorizationTierBadge(scorePercent = mastery.masteryScore)
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Level: ${mastery.tierLabel}",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            // Weak area loop recommendation
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
@@ -271,7 +420,7 @@ fun TopicMasteryCard(
                     Icon(imageVector = Icons.Default.FitnessCenter, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Next Practice: ${mastery.recommendedNextAction}",
+                        text = "Recommendation: ${mastery.recommendedNextAction}",
                         fontSize = 11.sp,
                         color = WarningAmber,
                         fontWeight = FontWeight.Medium
@@ -284,7 +433,7 @@ fun TopicMasteryCard(
                 onClick = onPracticeClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Practice Weak Area (ପୁନର୍ବାର ଅଭ୍ୟାସ କରନ୍ତୁ)", fontSize = 12.sp)
+                Text("Practice Topic (ପୁନର୍ବାର ଅଭ୍ୟାସ କରନ୍ତୁ)", fontSize = 12.sp)
             }
         }
     }

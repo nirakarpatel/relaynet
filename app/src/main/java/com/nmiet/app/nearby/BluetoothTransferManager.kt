@@ -160,21 +160,22 @@ class BluetoothTransferManager(
                 val json = JSONObject().apply {
                     put("type", "RELAYNET_LEARNING_PACK")
                     put("packId", entity.packId)
+                    put("title", entity.title)
                     put("titleOdia", entity.titleOdia)
                     put("titleEnglish", entity.titleEnglish)
-                    put("boardName", entity.boardName)
-                    put("classGrade", entity.classGrade)
+                    put("board", entity.board)
+                    put("grade", entity.grade)
                     put("subject", entity.subject)
                     put("chapterOdia", entity.chapterOdia)
                     put("chapterEnglish", entity.chapterEnglish)
                     put("topicOdia", entity.topicOdia)
                     put("topicEnglish", entity.topicEnglish)
-                    put("lessonSummaryOdia", entity.lessonSummaryOdia)
-                    put("lessonSummaryEnglish", entity.lessonSummaryEnglish)
+                    put("odiaContentJson", entity.odiaContentJson)
+                    put("englishContentJson", entity.englishContentJson)
                     put("equationOrFormula", entity.equationOrFormula ?: "")
                     put("sectionsJson", entity.sectionsJson)
                     put("quizQuestionsJson", entity.quizQuestionsJson)
-                    put("checksumSha256", entity.checksumSha256)
+                    put("sha256Hash", entity.sha256Hash)
                     put("sourceAttribution", entity.sourceAttribution)
                 }
 
@@ -250,27 +251,30 @@ class BluetoothTransferManager(
 
             if (!line.isNullOrEmpty()) {
                 val json = JSONObject(line)
+                val titleEng = json.optString("titleEnglish", json.optString("title", "Chapter 4: Photosynthesis"))
+
                 val entity = LearningPackEntity(
                     packId = json.getString("packId"),
-                    titleOdia = json.getString("titleOdia"),
-                    titleEnglish = json.getString("titleEnglish"),
-                    boardName = json.getString("boardName"),
-                    classGrade = json.getInt("classGrade"),
-                    subject = json.getString("subject"),
-                    chapterOdia = json.getString("chapterOdia"),
-                    chapterEnglish = json.getString("chapterEnglish"),
-                    topicOdia = json.getString("topicOdia"),
-                    topicEnglish = json.getString("topicEnglish"),
-                    lessonSummaryOdia = json.getString("lessonSummaryOdia"),
-                    lessonSummaryEnglish = json.getString("lessonSummaryEnglish"),
+                    title = json.optString("title", titleEng),
+                    board = json.optString("board", json.optString("boardName", "ODISHA_STATE")),
+                    grade = if (json.has("grade")) json.getInt("grade") else json.optInt("classGrade", 9),
+                    odiaContentJson = json.optString("odiaContentJson", json.optString("lessonSummaryOdia", "")),
+                    englishContentJson = json.optString("englishContentJson", json.optString("lessonSummaryEnglish", "")),
+                    sha256Hash = json.optString("sha256Hash", json.optString("checksumSha256", "")),
+                    isCached = true,
+                    titleOdia = json.optString("titleOdia", ""),
+                    titleEnglish = titleEng,
+                    subject = json.optString("subject", "Science (ବିଜ୍ଞାନ)"),
+                    chapterOdia = json.optString("chapterOdia", ""),
+                    chapterEnglish = json.optString("chapterEnglish", ""),
+                    topicOdia = json.optString("topicOdia", ""),
+                    topicEnglish = json.optString("topicEnglish", ""),
                     equationOrFormula = if (json.optString("equationOrFormula").isEmpty()) null else json.getString("equationOrFormula"),
-                    sectionsJson = json.getString("sectionsJson"),
-                    quizQuestionsJson = json.getString("quizQuestionsJson"),
-                    checksumSha256 = json.getString("checksumSha256"),
-                    isDownloaded = true,
+                    sectionsJson = json.optString("sectionsJson", "[]"),
+                    quizQuestionsJson = json.optString("quizQuestionsJson", "[]"),
                     isReceivedViaMesh = true,
                     peerSenderName = peerName,
-                    sourceAttribution = json.getString("sourceAttribution")
+                    sourceAttribution = json.optString("sourceAttribution", "Odisha State Board (BSE)")
                 )
 
                 val pack = entity.toDomain()
