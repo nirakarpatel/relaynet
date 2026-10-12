@@ -19,13 +19,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -41,9 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nmiet.app.domain.model.AppLanguage
@@ -71,7 +69,7 @@ fun QuizRunnerScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Diagnostic Quiz",
+                title = "Diagnostic Quiz Runner",
                 isOnline = true,
                 onBackClick = onBackClick
             )
@@ -84,44 +82,47 @@ fun QuizRunnerScreen(
                 modifier = Modifier.padding(innerPadding)
             )
         } else if (isFinished) {
-            // Quiz Results Summary Screen
+            // Completion Summary Sheet
             val total = pack!!.quizQuestions.size
             val scorePercent = if (total > 0) ((correctCount.toFloat() / total) * 100).toInt() else 0
+            val allConceptTags = pack!!.quizQuestions.map { it.conceptTag }.distinct()
+            val masteredConcepts = allConceptTags.filter { !weakConcepts.contains(it) }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Icon(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = null,
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(56.dp),
                     tint = if (scorePercent >= 70) SuccessGreen else WarningAmber
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Quiz Completed! (କୁଇଜ୍ ସମ୍ପୂର୍ଣ୍ଣ)",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Score: $correctCount / $total ($scorePercent%)",
-                    fontSize = 20.sp,
+                    text = "Overall Accuracy: $correctCount / $total ($scorePercent%)",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryBlue
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 val tierText = when {
-                    scorePercent >= 85 -> "Strong Mastery (ଉତ୍କୃଷ୍ଟ ଦକ୍ଷତା)"
-                    scorePercent >= 70 -> "Good Progress (ଉତ୍ତମ ଅଗ୍ରଗତି)"
-                    scorePercent >= 40 -> "Developing (ବିକାଶଶୀଳ)"
-                    else -> "Needs Foundation Practice (ମୂଳଧାରଣା ଅଭ୍ୟାସ ଆବଶ୍ୟକ)"
+                    scorePercent >= 85 -> "Strong Mastery (>85%)"
+                    scorePercent >= 70 -> "Proficient (70–85%)"
+                    scorePercent >= 50 -> "Developing (50–70%)"
+                    else -> "Foundation Needed (<50%)"
                 }
                 Box(
                     modifier = Modifier
@@ -132,33 +133,64 @@ fun QuizRunnerScreen(
                     Text(text = tierText, fontWeight = FontWeight.Bold, color = SuccessGreen, fontSize = 13.sp)
                 }
 
-                if (weakConcepts.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text(
-                                text = "Concepts to Review (ପୁନର୍ବାର ପଢ଼ିବାକୁ ଥିବା ଧାରଣା):",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = WarningAmber
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            weakConcepts.forEach { concept ->
-                                Text(text = "• ${concept.replace('_', ' ').capitalize()}", fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Breakdown: Mastered Concepts vs Needing Review
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(text = "Concept Mastery Summary:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Mastered concepts
+                        Text(text = "✓ Mastered Concepts (${masteredConcepts.size}):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SuccessGreen)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (masteredConcepts.isEmpty()) {
+                            Text(text = "• None yet. Review lesson materials to build foundation.", fontSize = 11.sp)
+                        } else {
+                            masteredConcepts.forEach { tag ->
+                                Text(text = "• ${tag.replace('_', ' ').capitalize()}", fontSize = 11.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Concepts needing review
+                        Text(text = "⚠️ Concepts Needing Review (${weakConcepts.size}):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = WarningAmber)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (weakConcepts.isEmpty()) {
+                            Text(text = "• All concept tags mastered in this attempt!", fontSize = 11.sp, color = SuccessGreen)
+                        } else {
+                            weakConcepts.forEach { tag ->
+                                Text(text = "• ${tag.replace('_', ' ').capitalize()}", fontSize = 11.sp, color = WarningAmber)
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Mandatory Action Button: "Add Weak Concepts to Practice Queue"
                 Button(
                     onClick = onNavigateToMastery,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("View Progress & Mastery Dashboard")
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Weak Concepts to Practice Queue & View Dashboard", fontSize = 13.sp)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Back to Lessons")
                 }
             }
         } else {
@@ -176,18 +208,26 @@ fun QuizRunnerScreen(
                         .verticalScroll(scrollState)
                         .padding(16.dp)
                 ) {
-                    // Header progress bar
+                    // Header progress indicator: "Question X of 5" with Score Tracker
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Question ${currentIndex + 1} of ${questions.size}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue
-                        )
+                        Column {
+                            Text(
+                                text = "Question ${currentIndex + 1} of ${questions.size}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                            Text(
+                                text = "Score Tracker: $correctCount Correct",
+                                fontSize = 11.sp,
+                                color = SuccessGreen,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             FilterChip(
@@ -212,7 +252,7 @@ fun QuizRunnerScreen(
                             .clip(RoundedCornerShape(3.dp))
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Question Card
                     Card(
@@ -223,17 +263,32 @@ fun QuizRunnerScreen(
                     ) {
                         Column(modifier = Modifier.padding(18.dp)) {
                             Text(
+                                text = "Concept Tag: [${currentQuestion.conceptTag}]",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
                                 text = if (language == AppLanguage.ODIA) currentQuestion.questionOdia else currentQuestion.questionEnglish,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = 24.sp
                             )
+                            if (language == AppLanguage.ODIA) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = currentQuestion.questionEnglish,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 4 Options
+                    // 4 Multiple-Choice Options
                     val options = if (language == AppLanguage.ODIA) currentQuestion.optionsOdia else currentQuestion.optionsEnglish
                     options.forEachIndexed { index, optionText ->
                         val isSelected = selectedOption == index
@@ -241,7 +296,7 @@ fun QuizRunnerScreen(
 
                         val (bgColor, borderColor) = when {
                             isSubmitted && isCorrect -> Pair(SuccessGreen.copy(alpha = 0.15f), SuccessGreen)
-                            isSubmitted && isSelected && !isCorrect -> Pair(MaterialTheme.colorScheme.error.copy(alpha = 0.15f), MaterialTheme.colorScheme.error)
+                            isSubmitted && isSelected && !isCorrect -> Pair(WarningAmber.copy(alpha = 0.2f), WarningAmber)
                             isSelected -> Pair(PrimaryBlue.copy(alpha = 0.12f), PrimaryBlue)
                             else -> Pair(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.outlineVariant)
                         }
@@ -276,46 +331,56 @@ fun QuizRunnerScreen(
                         }
                     }
 
-                    // Explanation & Misconception Box if submitted
+                    // Mandatory Misconception Diagnostic Card rendering immediately on submit
                     AnimatedVisibility(visible = isSubmitted) {
                         Column(modifier = Modifier.padding(top = 16.dp)) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(imageVector = Icons.Default.Lightbulb, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
+                            if (selectedOption != currentQuestion.correctIndex) {
+                                // Amber Misconception Diagnostic Card
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = WarningAmber.copy(alpha = 0.18f))
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Misconception Diagnostic Card",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = WarningAmber
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "Concept Explanation:",
+                                            text = if (language == AppLanguage.ODIA)
+                                                currentQuestion.misconceptionHintOdia
+                                            else
+                                                currentQuestion.misconceptionHintEnglish,
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
+                                            fontWeight = FontWeight.SemiBold,
+                                            lineHeight = 18.sp,
+                                            color = WarningAmber
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = if (language == AppLanguage.ODIA) currentQuestion.explanationOdia else currentQuestion.explanationEnglish,
-                                        fontSize = 12.sp,
-                                        lineHeight = 18.sp
-                                    )
-
-                                    if (selectedOption != currentQuestion.correctIndex) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(WarningAmber.copy(alpha = 0.15f))
-                                                .padding(8.dp)
-                                        ) {
+                                }
+                            } else {
+                                // Correct answer card
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = SuccessGreen.copy(alpha = 0.15f))
+                                ) {
+                                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("✓ Correct Concept Application!", fontWeight = FontWeight.Bold, color = SuccessGreen, fontSize = 13.sp)
                                             Text(
-                                                text = if (language == AppLanguage.ODIA) currentQuestion.misconceptionHintOdia else currentQuestion.misconceptionHintEnglish,
+                                                text = if (language == AppLanguage.ODIA) currentQuestion.explanationOdia else currentQuestion.explanationEnglish,
                                                 fontSize = 11.sp,
-                                                color = WarningAmber,
-                                                fontWeight = FontWeight.Medium
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -326,7 +391,7 @@ fun QuizRunnerScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Submit or Next Button
+                    // Submit / Next CTA Button
                     if (!isSubmitted) {
                         Button(
                             onClick = { viewModel.submitAnswer() },

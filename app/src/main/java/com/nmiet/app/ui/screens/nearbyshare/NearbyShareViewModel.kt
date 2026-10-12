@@ -18,12 +18,19 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+enum class ShareDirection {
+    SEND, RECEIVE
+}
+
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class NearbyShareViewModel(
     private val repository: ContentRepository,
     val demoManager: DemoTransferManager,
     val bluetoothManager: BluetoothTransferManager
 ) : ViewModel() {
+
+    private val _shareDirection = MutableStateFlow(ShareDirection.SEND)
+    val shareDirection: StateFlow<ShareDirection> = _shareDirection.asStateFlow()
 
     private val _useDemoMode = MutableStateFlow(true)
     val useDemoMode: StateFlow<Boolean> = _useDemoMode.asStateFlow()
@@ -37,17 +44,21 @@ class NearbyShareViewModel(
     val learningPacks: StateFlow<List<LearningPack>> = repository.getLearningPacksFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _selectedPackId = MutableStateFlow<String?>(null)
-    val selectedPackId: StateFlow<String?> = _selectedPackId.asStateFlow()
+    private val _selectedPackIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedPackIds: StateFlow<Set<String>> = _selectedPackIds.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.getLearningPacksFlow().collect { packs ->
-                if (_selectedPackId.value == null && packs.isNotEmpty()) {
-                    _selectedPackId.value = packs.first().packId
+                if (_selectedPackIds.value.isEmpty() && packs.isNotEmpty()) {
+                    _selectedPackIds.value = setOf(packs.first().packId)
                 }
             }
         }
+    }
+
+    fun setShareDirection(direction: ShareDirection) {
+        _shareDirection.value = direction
     }
 
     fun setDemoMode(enabled: Boolean) {
@@ -65,12 +76,19 @@ class NearbyShareViewModel(
         _activeManager.value.stopScanning()
     }
 
-    fun selectPack(packId: String) {
-        _selectedPackId.value = packId
+    fun togglePackSelection(packId: String) {
+        val current = _selectedPackIds.value.toMutableSet()
+        if (current.contains(packId)) {
+            if (current.size > 1) current.remove(packId)
+        } else {
+            current.add(packId)
+        }
+        _selectedPackIds.value = current
     }
 
     fun sendToPeer(peer: PeerDevice) {
-        val pack = learningPacks.value.firstOrNull { it.packId == _selectedPackId.value }
+        val firstSelected = _selectedPackIds.value.firstOrNull()
+        val pack = learningPacks.value.firstOrNull { it.packId == firstSelected }
             ?: learningPacks.value.firstOrNull()
             ?: PilotCurriculumCatalog.getPilotLearningPack()
 
@@ -81,7 +99,7 @@ class NearbyShareViewModel(
         if (_useDemoMode.value) {
             val incomingPack = PilotCurriculumCatalog.getPilotLearningPack().copy(
                 packId = "relaynet_class9_science_mesh_received_v1",
-                titleEnglish = "[Peer Mesh] Photosynthesis & Plant Nutrition",
+                titleEnglish = "[Node-02 Mesh] Photosynthesis & Plant Biochemistry",
                 titleOdia = "[ସହପାଠୀ ସେୟାର] ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା",
                 isReceivedViaMesh = true,
                 peerSenderName = peer.name

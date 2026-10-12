@@ -1,6 +1,7 @@
 package com.nmiet.app.ui.screens.curriculum
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,13 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.DownloadDone
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
@@ -41,8 +42,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.ui.components.AppTopBar
+import com.nmiet.app.ui.components.ReceivedViaNearbyBadge
+import com.nmiet.app.ui.components.StoredOfflineBadge
 import com.nmiet.app.ui.theme.AccentCyan
 import com.nmiet.app.ui.theme.PrimaryBlue
 import com.nmiet.app.ui.theme.SuccessGreen
@@ -52,20 +56,22 @@ import com.nmiet.app.ui.theme.WarningAmber
 fun CurriculumScreen(
     viewModel: CurriculumViewModel,
     onOpenLesson: (String) -> Unit,
-    onStartQuiz: (String) -> Unit
+    onStartQuiz: (String) -> Unit,
+    onShareViaBluetooth: () -> Unit
 ) {
     val profile by viewModel.profile.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val packs by viewModel.learningPacks.collectAsState()
+
+    val selectedBoard by viewModel.selectedBoard.collectAsState()
+    val selectedGrade by viewModel.selectedGrade.collectAsState()
     val selectedSubject by viewModel.selectedSubject.collectAsState()
     val curriculumNodes by viewModel.allCurriculumNodes.collectAsState()
-
-    val subjects = listOf("All", "Science (Biology)", "Science (Physics)", "Mathematics")
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "RelayNet Learning",
+                title = "Curriculum Explorer",
                 isOnline = syncStatus.isOnline
             )
         }
@@ -103,13 +109,13 @@ fun CurriculumScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "${profile.name} • Class ${profile.classGrade}",
+                                text = "${profile.name} • Class $selectedGrade",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                text = "${profile.board.displayName} • ${profile.preferredLanguage.displayName}",
+                                text = "${selectedBoard.displayName} • ${profile.preferredLanguage.displayName}",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
@@ -119,7 +125,74 @@ fun CurriculumScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Offline Notice Strip
+                // Mandatory Top Filter Chips (Board, Class, Subject)
+                Text(
+                    text = "Filters (ବୋର୍ଡ, ଶ୍ରେଣୀ ଓ ବିଷୟ):",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Board Chips
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Board.entries.forEach { board ->
+                        val isSelected = selectedBoard == board
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.onBoardSelected(board) },
+                            label = {
+                                val labelText = when (board) {
+                                    Board.ODISHA_STATE -> "Odisha State Board (BSE)"
+                                    Board.CBSE -> "CBSE"
+                                    Board.CISCE_ICSE -> "ICSE"
+                                }
+                                Text(labelText, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Class Grade & Subject Chips Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Class chips
+                    listOf(9, 10).forEach { grade ->
+                        val isSelected = selectedGrade == grade
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.onGradeSelected(grade) },
+                            label = { Text("Class $grade", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Subject chips
+                    listOf("Science (ବିଜ୍ଞାନ)", "Mathematics").forEach { subject ->
+                        val isSelected = selectedSubject == subject
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.onSubjectSelected(subject) },
+                            label = { Text(subject, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Offline Notice Strip if Offline
                 if (!syncStatus.isOnline) {
                     Box(
                         modifier = Modifier
@@ -132,30 +205,15 @@ fun CurriculumScreen(
                             Icon(imageVector = Icons.Default.CloudOff, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Offline Mode: Full lessons and quizzes available from local storage.",
+                                text = "Offline Mode: Serving curriculum from local Room SQLite cache.",
                                 fontSize = 12.sp,
-                                color = WarningAmber
+                                color = WarningAmber,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
-
-                // Subject Filters
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    subjects.take(3).forEach { subject ->
-                        FilterChip(
-                            selected = selectedSubject == subject,
-                            onClick = { viewModel.onSubjectSelected(subject) },
-                            label = { Text(subject.replace(" (Biology)", "").replace(" (Physics)", ""), fontSize = 12.sp) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = "Downloaded Learning Packs (ଅଫଲାଇନ୍ ପାଠ)",
@@ -170,21 +228,22 @@ fun CurriculumScreen(
                 LearningPackCard(
                     pack = pack,
                     onOpenLesson = { onOpenLesson(pack.packId) },
-                    onStartQuiz = { onStartQuiz(pack.packId) }
+                    onStartQuiz = { onStartQuiz(pack.packId) },
+                    onShareViaBluetooth = onShareViaBluetooth
                 )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Additional Board Curriculum Outline
+            // Additional Board Curriculum Outline Catalog
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Curriculum Catalogue (Classes 6–10 Scope)",
+                    text = "Curriculum Catalogue (Secondary Scope)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "CBSE, Odisha State Board & ICSE multi-board syllabus mappings.",
+                    text = "Multi-board BSE, CBSE & ICSE mapped curriculum nodes.",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -221,7 +280,7 @@ fun CurriculumScreen(
                                     Text("Pack Active", fontSize = 10.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
                                 }
                             } else {
-                                Text("Online Cloud", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Cloud Available", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
@@ -242,7 +301,8 @@ fun CurriculumScreen(
 fun LearningPackCard(
     pack: LearningPack,
     onOpenLesson: () -> Unit,
-    onStartQuiz: () -> Unit
+    onStartQuiz: () -> Unit,
+    onShareViaBluetooth: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -251,59 +311,52 @@ fun LearningPackCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Badges
+            // Badges Header: Footprint and Cache Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(SuccessGreen.copy(alpha = 0.15f))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DownloadDone, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(12.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("100% Offline Ready", fontSize = 10.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    StoredOfflineBadge()
                     if (pack.isReceivedViaMesh) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(AccentCyan.copy(alpha = 0.15f))
-                                .padding(horizontal = 6.dp, vertical = 3.dp)
-                        ) {
-                            Text("Via: ${pack.peerSenderName ?: "Peer"}", fontSize = 10.sp, color = AccentCyan, fontWeight = FontWeight.Bold)
-                        }
+                        ReceivedViaNearbyBadge(peerName = pack.peerSenderName)
                     }
                 }
 
-                Text(
-                    text = "${pack.sizeBytes / 1024} KB",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Metadata: Storage footprint e.g. "1.8 MB"
+                val footprintText = if (pack.sizeBytes >= 1_000_000) {
+                    "%.1f MB".format(pack.sizeBytes / 1_000_000.0)
+                } else {
+                    "${pack.sizeBytes / 1024} KB"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Footprint: $footprintText",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = pack.titleEnglish,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            // Chapter Title: "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)"
             Text(
                 text = pack.titleOdia,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryBlue
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = pack.lesson.summaryEnglish,
@@ -314,27 +367,36 @@ fun LearningPackCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Buttons
+            // Action buttons: "Open Lesson", "Take Diagnostic Quiz", and "Share via Bluetooth"
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Button(
                     onClick = onOpenLesson,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Read Lesson", fontSize = 13.sp)
+                    Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Open Lesson", fontSize = 12.sp)
                 }
 
                 OutlinedButton(
                     onClick = onStartQuiz,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(imageVector = Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Take Quiz", fontSize = 13.sp)
+                    Icon(imageVector = Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Take Quiz", fontSize = 12.sp)
+                }
+
+                OutlinedButton(
+                    onClick = onShareViaBluetooth,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(imageVector = Icons.Default.CellTower, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share P2P", fontSize = 12.sp)
                 }
             }
         }

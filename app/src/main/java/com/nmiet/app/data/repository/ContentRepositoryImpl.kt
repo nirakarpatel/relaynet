@@ -102,12 +102,13 @@ class ContentRepositoryImpl(
         val attemptId = "attempt_${UUID.randomUUID().toString().take(8)}"
         val attemptEntity = QuizAttemptEntity(
             attemptId = attemptId,
-            topicId = topicId,
+            packId = topicId,
+            score = scorePercent,
+            answersJson = "[]",
+            misconceptionTagsJson = if (weakConcepts.isEmpty()) "[]" else weakConcepts.joinToString(separator = "\",\"", prefix = "[\"", postfix = "\"]") { it.replace("\"", "\\\"") },
             topicName = topicName,
-            scorePercent = scorePercent,
             correctCount = correctCount,
             totalCount = totalCount,
-            weakConceptsCsv = weakConcepts.joinToString(","),
             timestamp = System.currentTimeMillis(),
             isSynced = _syncStatus.value.isOnline
         )

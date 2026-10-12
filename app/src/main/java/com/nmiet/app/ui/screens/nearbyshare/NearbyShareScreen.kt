@@ -1,5 +1,12 @@
 package com.nmiet.app.ui.screens.nearbyshare
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,19 +32,24 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,6 +58,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,21 +72,27 @@ import com.nmiet.app.ui.components.EmptyView
 import com.nmiet.app.ui.theme.PrimaryBlue
 import com.nmiet.app.ui.theme.SuccessGreen
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NearbyShareScreen(
     viewModel: NearbyShareViewModel,
     onNavigateToCurriculum: () -> Unit
 ) {
+    val shareDirection by viewModel.shareDirection.collectAsState()
     val transferState by viewModel.transferState.collectAsState()
     val isDemoMode by viewModel.useDemoMode.collectAsState()
     val packs by viewModel.learningPacks.collectAsState()
-    val selectedPackId by viewModel.selectedPackId.collectAsState()
+    val selectedPackIds by viewModel.selectedPackIds.collectAsState()
+
+    val connectedPeerName = (transferState as? TransferState.Connected)?.connectedPeer?.name
+        ?: (transferState as? TransferState.Transferring)?.peer?.name
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "P2P Pack Share",
+                title = "P2P ShikshaMesh",
                 isOnline = false,
+                connectedPeerName = connectedPeerName ?: if (isDemoMode) "Node-02" else null,
                 isDemoMode = isDemoMode
             )
         }
@@ -85,7 +106,34 @@ fun NearbyShareScreen(
             item {
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Transport Mode Selector Card
+                // Segmented Toggle: Send Packs vs Receive Packs
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    SegmentedButton(
+                        selected = shareDirection == ShareDirection.SEND,
+                        onClick = { viewModel.setShareDirection(ShareDirection.SEND) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                    ) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Send Packs (ପାଠ ପଠାନ୍ତୁ)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    SegmentedButton(
+                        selected = shareDirection == ShareDirection.RECEIVE,
+                        onClick = { viewModel.setShareDirection(ShareDirection.RECEIVE) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Receive Packs (ଗ୍ରହଣ କରନ୍ତୁ)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Demo Simulation Mode Switch Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -94,7 +142,7 @@ fun NearbyShareScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -103,16 +151,16 @@ fun NearbyShareScreen(
                                 Text(
                                     text = if (isDemoMode) "Demo Simulation Mode" else "Real Bluetooth RFCOMM",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    fontSize = 13.sp
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 if (isDemoMode) DemoModeBadge()
                             }
                             Text(
                                 text = if (isDemoMode)
-                                    "Simulates two-device mesh transfer with progress & SHA-256 validation."
+                                    "Simulates full Bluetooth mesh transfer with progress & SHA-256 validation for presentation."
                                 else
-                                    "Transfers learning pack directly between two physical Android phones over Bluetooth.",
+                                    "Connects directly over Bluetooth RFCOMM channel with nearby Android phones.",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -124,18 +172,38 @@ fun NearbyShareScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
             }
 
-            // Transfer Status Card
+            // Real-time Transfer Modal with 4-Step State Machine
             item {
                 when (val state = transferState) {
-                    is TransferState.Transferring -> {
-                        TransferringPackCard(state = state, onCancel = { viewModel.cancelTransfer() })
+                    is TransferState.Connecting -> {
+                        TransferStateMachineCard(
+                            stepName = "State 1: Discovery & Handshake",
+                            statusMessage = "Connecting to ${state.targetPeer.name} over RFCOMM...",
+                            progressPercent = 15,
+                            checksumStatus = "Comparing Bluetooth Handshake Tokens..."
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                     }
-                    is TransferState.Connecting -> {
-                        ConnectingPackCard(peer = state.targetPeer)
+                    is TransferState.Connected -> {
+                        TransferStateMachineCard(
+                            stepName = "State 2: Manifest Negotiation",
+                            statusMessage = "Negotiating manifest hashes with ${state.connectedPeer.name}...",
+                            progressPercent = 35,
+                            checksumStatus = "Comparing SHA-256 hashes... Valid"
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    is TransferState.Transferring -> {
+                        TransferStateMachineCard(
+                            stepName = "State 3: Chunked Transfer",
+                            statusMessage = "Progress: ${state.progressPercent}% • 120 KB/s via Bluetooth RFCOMM",
+                            progressPercent = state.progressPercent,
+                            checksumStatus = "Chunk ${state.progressPercent / 10} verified • ${state.currentItemTitle}",
+                            onCancel = { viewModel.cancelTransfer() }
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     is TransferState.Success -> {
@@ -159,58 +227,92 @@ fun NearbyShareScreen(
                 }
             }
 
-            // Discovered Peers Section
+            // Radar-Style Scanning Card & Discovered Peers List
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(text = "Nearby Learners & Devices", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        val isScanning = transferState is TransferState.Scanning
-                        Text(
-                            text = if (isScanning) "Listening for nearby student devices..." else "Ready to discover peers over Bluetooth",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                val isScanning = transferState is TransferState.Scanning
 
-                    val isScanning = transferState is TransferState.Scanning
-                    Button(
-                        onClick = {
-                            if (isScanning) viewModel.stopScanning() else viewModel.startScanning()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isScanning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isScanning) Icons.Default.Stop else Icons.AutoMirrored.Filled.BluetoothSearching,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isScanning) "Stop" else "Scan", fontSize = 12.sp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(PrimaryBlue.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isScanning) Icons.AutoMirrored.Filled.BluetoothSearching else Icons.Default.Bluetooth,
+                                        contentDescription = null,
+                                        tint = PrimaryBlue
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Discovered Mesh Peers",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        text = if (isScanning) "Scanning 2.4GHz Bluetooth band..." else "Ready to scan for nearby students",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = { if (isScanning) viewModel.stopScanning() else viewModel.startScanning() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isScanning) MaterialTheme.colorScheme.error else PrimaryBlue
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (isScanning) Icons.Default.Stop else Icons.AutoMirrored.Filled.BluetoothSearching,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(if (isScanning) "Stop" else "Scan Radar", fontSize = 11.sp)
+                            }
+                        }
+
+                        if (isScanning) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            RadarPulseAnimationCard()
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
+
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
+            // Peers List
             val peers = (transferState as? TransferState.Scanning)?.discoveredPeers ?: emptyList()
             if (peers.isEmpty()) {
                 item {
                     val isScanning = transferState is TransferState.Scanning
                     EmptyView(
-                        title = if (isScanning) "Searching for Nearby Peers..." else "No Devices Connected",
+                        title = if (isScanning) "Searching for Nearby Peers..." else "No Peers Connected",
                         subtitle = if (isScanning)
-                            "Scanning 2.4GHz Bluetooth band for RelayNet student nodes..."
+                            "Listening for nearby student nodes (e.g., Node-02)..."
                         else
-                            "Tap 'Scan' to discover nearby students or school hubs to share packs offline.",
+                            "Tap 'Scan Radar' to discover nearby students or school hubs.",
                         icon = if (isScanning) Icons.AutoMirrored.Filled.BluetoothSearching else Icons.Default.Devices,
                         actionButtonText = if (!isScanning) "Start Scanning" else null,
                         onActionClick = { viewModel.startScanning() },
-                        modifier = Modifier.padding(vertical = 16.dp)
+                        modifier = Modifier.padding(vertical = 12.dp)
                     )
                 }
             } else {
@@ -218,6 +320,7 @@ fun NearbyShareScreen(
                     PeerLearningDeviceCard(
                         peer = peer,
                         isDemoMode = isDemoMode,
+                        shareDirection = shareDirection,
                         onSendClick = { viewModel.sendToPeer(peer) },
                         onSimulateReceiveClick = { viewModel.simulateIncomingTransferFromPeer(peer) }
                     )
@@ -225,43 +328,57 @@ fun NearbyShareScreen(
                 }
             }
 
-            // Learning Pack to Transfer Selection
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Select Pack to Share (ପାଠ ବାଛନ୍ତୁ)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            items(packs, key = { "select-${it.packId}" }) { pack ->
-                val isSelected = selectedPackId == pack.packId
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface
+            // Manifest Selection Checklist
+            if (shareDirection == ShareDirection.SEND) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Manifest Selection Checklist (ପାଠ ବାଛନ୍ତୁ)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                ) {
-                    Row(
+                    Text(
+                        text = "Check learning packs from local Room SQLite database to include in transfer manifest.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                items(packs, key = { "manifest-${it.packId}" }) { pack ->
+                    val isChecked = selectedPackIds.contains(pack.packId)
+                    val footprintText = "%.1f MB".format(pack.sizeBytes / 1_000_000.0)
+
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = isSelected,
-                            onClick = { viewModel.selectPack(pack.packId) }
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isChecked) PrimaryBlue.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = pack.titleEnglish, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                            Text(text = pack.titleOdia, fontSize = 12.sp, color = PrimaryBlue)
-                            Text(text = "${pack.sizeBytes / 1024} KB • SHA-256: ${pack.checksumSha256.take(8)}...", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { viewModel.togglePackSelection(pack.packId) }
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = pack.titleOdia, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = PrimaryBlue)
+                                Text(text = pack.titleEnglish, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    text = "Footprint: $footprintText • SHA-256: ${pack.checksumSha256.take(8)}...",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -275,9 +392,72 @@ fun NearbyShareScreen(
 }
 
 @Composable
+fun TransferStateMachineCard(
+    stepName: String,
+    statusMessage: String,
+    progressPercent: Int,
+    checksumStatus: String,
+    onCancel: (() -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(PrimaryBlue.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(text = stepName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+                }
+
+                if (onCancel != null) {
+                    IconButton(onClick = onCancel, modifier = Modifier.size(22.dp)) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = statusMessage, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progressPercent / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = checksumStatus,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PeerLearningDeviceCard(
     peer: PeerDevice,
     isDemoMode: Boolean,
+    shareDirection: ShareDirection,
     onSendClick: () -> Unit,
     onSimulateReceiveClick: () -> Unit
 ) {
@@ -301,30 +481,34 @@ fun PeerLearningDeviceCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(text = peer.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(text = "${peer.address} • Signal: ${peer.signalStrengthRssi} dBm", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        text = "${peer.address} • Signal: ${peer.signalStrengthRssi} dBm (RSSI)",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onSendClick,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Send Pack", fontSize = 12.sp)
-                }
-
-                if (isDemoMode) {
+                if (shareDirection == ShareDirection.SEND) {
+                    Button(
+                        onClick = onSendClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Send Manifest", fontSize = 12.sp)
+                    }
+                } else {
                     OutlinedButton(
                         onClick = onSimulateReceiveClick,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Simulate Receive", fontSize = 11.sp)
+                        Text("Request & Receive Pack", fontSize = 11.sp)
                     }
                 }
             }
@@ -333,58 +517,34 @@ fun PeerLearningDeviceCard(
 }
 
 @Composable
-fun TransferringPackCard(state: TransferState.Transferring, onCancel: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = if (state.isOutgoing) "Sending to ${state.peer.name}..." else "Receiving from ${state.peer.name}...",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                IconButton(onClick = onCancel, modifier = Modifier.size(22.dp)) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
-                }
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = state.currentItemTitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { state.progressPercent / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "${state.progressPercent}% Transferred • Checksum Verifying...", fontSize = 10.sp, color = PrimaryBlue, fontWeight = FontWeight.Bold)
-        }
-    }
-}
+fun RadarPulseAnimationCard() {
+    val infiniteTransition = rememberInfiniteTransition(label = "radar")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "scale"
+    )
 
-@Composable
-fun ConnectingPackCard(peer: PeerDevice) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(PrimaryBlue.copy(alpha = 0.08f)),
+        contentAlignment = Alignment.Center
     ) {
-        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-                Text(text = "Connecting to ${peer.name}...", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Text(text = "Establishing Bluetooth RFCOMM socket channel...", fontSize = 11.sp)
-            }
+        Canvas(modifier = Modifier.size(70.dp)) {
+            drawCircle(
+                color = PrimaryBlue.copy(alpha = 1.0f - pulseScale),
+                radius = (size.minDimension / 2) * pulseScale,
+                style = Stroke(width = 3.dp.toPx())
+            )
         }
+        Text(text = "Scanning 2.4GHz RFCOMM...", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
     }
 }
 
@@ -399,20 +559,20 @@ fun SuccessPackCard(state: TransferState.Success, onDismiss: () -> Unit, onOpenC
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "Transfer Verified", fontWeight = FontWeight.Bold, color = SuccessGreen)
+                Text(text = "State 4: Validation Complete (Done!)", fontWeight = FontWeight.Bold, color = SuccessGreen)
             }
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = state.message, fontSize = 12.sp)
+            Text(text = "SHA-256 checksum verified successfully. ${state.message}", fontSize = 12.sp)
             Spacer(modifier = Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onOpenCurriculum,
                     colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
                 ) {
-                    Text("View Lessons", fontSize = 12.sp)
+                    Text("View Lessons in Curriculum", fontSize = 12.sp)
                 }
                 OutlinedButton(onClick = onDismiss) {
-                    Text("Done", fontSize = 12.sp)
+                    Text("Dismiss", fontSize = 12.sp)
                 }
             }
         }

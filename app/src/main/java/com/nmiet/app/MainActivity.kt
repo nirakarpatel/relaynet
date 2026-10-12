@@ -19,6 +19,8 @@ import com.nmiet.app.ui.screens.nearbyshare.NearbyShareViewModel
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
 import com.nmiet.app.ui.theme.NMIETAppTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -31,6 +33,13 @@ class MainActivity : ComponentActivity() {
 
         // 2. Initialize Learning Platform Repository
         val repository = ContentRepositoryImpl(learningDao = learningDao)
+
+        // Preload pilot catalog data if empty on first run
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (learningDao.countPacks() == 0) {
+                repository.resetToPilotDemoPacks()
+            }
+        }
 
         // 3. Initialize Transfer Managers with pack ingestion callback
         val demoTransferManager = DemoTransferManager(

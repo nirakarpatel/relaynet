@@ -1,19 +1,19 @@
 package com.nmiet.app.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CellTower
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    data object Curriculum : Screen("curriculum", "Lessons", Icons.AutoMirrored.Filled.MenuBook)
-    data object AITutor : Screen("tutor", "AI Tutor", Icons.Default.AutoAwesome)
-    data object MeshShare : Screen("mesh", "P2P Share", Icons.Default.Share)
-    data object Mastery : Screen("mastery", "Mastery", Icons.Default.Leaderboard)
-    data object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    data object Curriculum : Screen("curriculum", "Curriculum", Icons.Default.AutoStories)
+    data object AITutor : Screen("tutor", "AI Tutor", Icons.Default.SmartToy)
+    data object Mastery : Screen("mastery", "Mastery", Icons.Default.Insights)
+    data object MeshShare : Screen("mesh", "P2P Share", Icons.Default.CellTower)
+    data object Settings : Screen("settings", "Settings", Icons.Default.Tune)
 }
 
 object Routes {
