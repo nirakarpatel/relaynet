@@ -1,12 +1,19 @@
 package com.nmiet.app.ui.screens.tutor
 
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,11 +34,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,20 +56,28 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nmiet.app.domain.model.TutorMessage
 import com.nmiet.app.domain.model.TutorSender
 import com.nmiet.app.ui.components.AppTopBar
+import com.nmiet.app.ui.components.VoiceInputBar
 import com.nmiet.app.ui.theme.AccentCyan
 import com.nmiet.app.ui.theme.PrimaryBlue
 import com.nmiet.app.ui.theme.SuccessGreen
@@ -65,9 +87,11 @@ import com.nmiet.app.ui.theme.WarningAmber
 fun AITutorScreen(
     viewModel: AITutorViewModel
 ) {
+    val context = LocalContext.current
     val messages by viewModel.messages.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
+    val attachedImage by viewModel.attachedImage.collectAsState()
     val isRecording by viewModel.isRecordingVoice.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
 
@@ -79,11 +103,12 @@ fun AITutorScreen(
         }
     }
 
-    // Mandatory One-Tap Suggestion Chips from Prompt Contract
+    // One-Tap Suggestion Chips
     val sampleQueries = listOf(
         "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
         "Where does Oxygen come from in photosynthesis?",
-        "Translate to Odia (ଓଡ଼ିଆରେ କୁହନ୍ତୁ)"
+        "Explain Light vs Dark Reactions in Odia",
+        "Who is Salman Khan?" // Test guardrail refusal
     )
 
     Scaffold(
@@ -116,9 +141,9 @@ fun AITutorScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (syncStatus.isOnline)
-                            "Online Mode: [Cloud AI] Reasoning active"
+                            "Online Mode: [Cloud AI] Gemini Vision & Study Guardrails active"
                         else
-                            "Offline Mode: [Offline Grounded] using local SQLite rules matrix",
+                            "Offline Mode: [Offline Grounded] using local Room SQLite FTS cache",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (syncStatus.isOnline) PrimaryBlue else WarningAmber
@@ -147,7 +172,7 @@ fun AITutorScreen(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("RelayNet AI Tutor is formulating response...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("RelayNet AI Tutor is solving with academic grounding...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -158,7 +183,7 @@ fun AITutorScreen(
                 VoiceWaveformIndicator()
             }
 
-            // Mandatory One-tap suggestion chips
+            // One-tap suggestion chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,6 +191,10 @@ fun AITutorScreen(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                SuggestionChip(
+                    onClick = { viewModel.attachSampleTextbookPhoto() },
+                    label = { Text("📸 Attach Diagram (ଚିତ୍ର)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
+                )
                 sampleQueries.forEach { query ->
                     SuggestionChip(
                         onClick = { viewModel.sendMessage(query) },
@@ -174,73 +203,18 @@ fun AITutorScreen(
                 }
             }
 
-            // Voice-First Input Bar with Prominent Microphone button
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Prominent Microphone Button (Press-to-speak in Odia or English)
-                    val micScale by animateMicPulse(isRecording)
-                    IconButton(
-                        onClick = { viewModel.simulateVoiceInput() },
-                        modifier = Modifier
-                            .scale(micScale)
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(if (isRecording) MaterialTheme.colorScheme.error else PrimaryBlue)
-                    ) {
-                        Icon(
-                            imageVector = if (isRecording) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Press to Speak in Odia or English",
-                            tint = androidx.compose.ui.graphics.Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { viewModel.onInputTextChanged(it) },
-                        placeholder = {
-                            Text(
-                                text = if (isRecording) "Listening in Odia/English..." else "Ask in Odia or English...",
-                                fontSize = 13.sp
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        shape = RoundedCornerShape(20.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    IconButton(
-                        onClick = { viewModel.sendMessage() },
-                        enabled = inputText.isNotBlank() && !isGenerating,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(if (inputText.isNotBlank()) PrimaryBlue else MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = if (inputText.isNotBlank()) androidx.compose.ui.graphics.Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            // Voice-First & Vision Multimodal Input Bar
+            VoiceInputBar(
+                inputText = inputText,
+                onInputTextChanged = { viewModel.onInputTextChanged(it) },
+                attachedImage = attachedImage,
+                onImageSelected = { viewModel.onImageCaptured(it) },
+                onClearImage = { viewModel.clearAttachedImage() },
+                isRecordingVoice = isRecording,
+                onMicClick = { viewModel.simulateVoiceInput() },
+                onSendClick = { viewModel.sendMessage() },
+                isGenerating = isGenerating
+            )
         }
     }
 }
@@ -253,6 +227,53 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
+        // Amber warning card if query was out of syllabus & rejected by guardrail
+        if (!message.isStudyRelated) {
+            Card(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = WarningAmber.copy(alpha = 0.15f)),
+                border = BorderStroke(1.dp, WarningAmber.copy(alpha = 0.6f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = WarningAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Study-Only Guardrail Triggered",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = WarningAmber
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions).",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = 20.sp
+                    )
+                    if (message.textOdia.isNotBlank() && !message.textOdia.contains("ମୁଁ କେବଳ ପାଠପଢ଼ା")) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = message.textOdia,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 17.sp
+                        )
+                    }
+                }
+            }
+            return@Row
+        }
+
+        // Standard Chat Message Bubble
         Card(
             modifier = Modifier.fillMaxWidth(0.88f),
             shape = RoundedCornerShape(14.dp),
@@ -274,7 +295,7 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                             Text("RelayNet AI Tutor", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                         }
 
-                        // Mandatory Origin Badge: [Offline Grounded] or [Cloud AI]
+                        // Origin Badge: [Offline Grounded] vs [Cloud AI]
                         val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
                         val badgeText = if (isOfflineGrounded) "[Offline Grounded]" else "[Cloud AI]"
                         val badgeBg = if (isOfflineGrounded) SuccessGreen.copy(alpha = 0.15f) else AccentCyan.copy(alpha = 0.15f)
@@ -295,6 +316,20 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                         }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                // If user attached an image, render preview inside bubble
+                if (isUser && message.imageBitmap != null) {
+                    Image(
+                        bitmap = message.imageBitmap.asImageBitmap(),
+                        contentDescription = "User submitted photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // Odia text
@@ -324,6 +359,28 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                                 lineHeight = 17.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                    }
+                }
+
+                // Concept grounding tags if present
+                if (!isUser && message.sourceTags.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        message.sourceTags.take(3).forEach { tag ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("#$tag", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

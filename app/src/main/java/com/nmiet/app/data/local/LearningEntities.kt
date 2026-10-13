@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
+import com.nmiet.app.domain.model.ContentOrigin
 import com.nmiet.app.domain.model.KeyTerm
 import com.nmiet.app.domain.model.LearnerProfile
 import com.nmiet.app.domain.model.LearningPack
@@ -51,207 +52,7 @@ data class LearnerProfileEntity(
     }
 }
 
-@Entity(tableName = "learning_packs")
-data class LearningPackEntity(
-    @PrimaryKey
-    val packId: String,
-    val title: String, // e.g., "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)"
-    val board: String,
-    val grade: Int,
-    val odiaContentJson: String,
-    val englishContentJson: String,
-    val sha256Hash: String,
-    val isCached: Boolean = true,
-    val titleOdia: String = "",
-    val titleEnglish: String = "",
-    val subject: String = "",
-    val chapterOdia: String = "",
-    val chapterEnglish: String = "",
-    val topicOdia: String = "",
-    val topicEnglish: String = "",
-    val equationOrFormula: String? = null,
-    val sectionsJson: String = "[]",
-    val quizQuestionsJson: String = "[]",
-    val sizeBytes: Long = 1887436L, // 1.8 MB footprint
-    val isReceivedViaMesh: Boolean = false,
-    val peerSenderName: String? = null,
-    val sourceAttribution: String = "Odisha State Board (BSE) & NCERT"
-) {
-    fun toDomain(): LearningPack {
-        val boardEnum = try { Board.valueOf(board) } catch (_: Exception) { Board.ODISHA_STATE }
-        val parsedSections = parseSectionsJson(sectionsJson)
-        val parsedQuestions = parseQuestionsJson(quizQuestionsJson)
-
-        return LearningPack(
-            packId = packId,
-            titleOdia = if (titleOdia.isNotBlank()) titleOdia else "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)",
-            titleEnglish = if (titleEnglish.isNotBlank()) titleEnglish else title,
-            board = boardEnum,
-            classGrade = grade,
-            subject = if (subject.isNotBlank()) subject else "Science (ବିଜ୍ଞାନ)",
-            chapterOdia = chapterOdia,
-            chapterEnglish = chapterEnglish,
-            topicOdia = topicOdia,
-            topicEnglish = topicEnglish,
-            lesson = LessonData(
-                summaryOdia = odiaContentJson,
-                summaryEnglish = englishContentJson,
-                equationOrFormula = equationOrFormula,
-                sections = parsedSections
-            ),
-            quizQuestions = parsedQuestions,
-            sizeBytes = sizeBytes,
-            checksumSha256 = sha256Hash,
-            isDownloaded = isCached,
-            isReceivedViaMesh = isReceivedViaMesh,
-            peerSenderName = peerSenderName,
-            sourceAttribution = sourceAttribution
-        )
-    }
-
-    companion object {
-        fun fromDomain(pack: LearningPack): LearningPackEntity {
-            return LearningPackEntity(
-                packId = pack.packId,
-                title = pack.titleEnglish,
-                board = pack.board.name,
-                grade = pack.classGrade,
-                odiaContentJson = pack.lesson.summaryOdia,
-                englishContentJson = pack.lesson.summaryEnglish,
-                sha256Hash = pack.checksumSha256,
-                isCached = pack.isDownloaded,
-                titleOdia = pack.titleOdia,
-                titleEnglish = pack.titleEnglish,
-                subject = pack.subject,
-                chapterOdia = pack.chapterOdia,
-                chapterEnglish = pack.chapterEnglish,
-                topicOdia = pack.topicOdia,
-                topicEnglish = pack.topicEnglish,
-                equationOrFormula = pack.lesson.equationOrFormula,
-                sectionsJson = serializeSections(pack.lesson.sections),
-                quizQuestionsJson = serializeQuestions(pack.quizQuestions),
-                sizeBytes = pack.sizeBytes,
-                isReceivedViaMesh = pack.isReceivedViaMesh,
-                peerSenderName = pack.peerSenderName,
-                sourceAttribution = pack.sourceAttribution
-            )
-        }
-
-        private fun serializeSections(sections: List<LessonSection>): String {
-            val array = JSONArray()
-            sections.forEach { sec ->
-                val obj = JSONObject().apply {
-                    put("titleOdia", sec.titleOdia)
-                    put("titleEnglish", sec.titleEnglish)
-                    put("contentOdia", sec.contentOdia)
-                    put("contentEnglish", sec.contentEnglish)
-                    val termsArray = JSONArray()
-                    sec.keyTerms.forEach { term ->
-                        termsArray.put(JSONObject().apply {
-                            put("termOdia", term.termOdia)
-                            put("termEnglish", term.termEnglish)
-                            put("defOdia", term.definitionOdia)
-                            put("defEng", term.definitionEnglish)
-                        })
-                    }
-                    put("keyTerms", termsArray)
-                }
-                array.put(obj)
-            }
-            return array.toString()
-        }
-
-        private fun parseSectionsJson(jsonStr: String): List<LessonSection> {
-            val list = mutableListOf<LessonSection>()
-            try {
-                val array = JSONArray(jsonStr)
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    val terms = mutableListOf<KeyTerm>()
-                    if (obj.has("keyTerms")) {
-                        val tArray = obj.getJSONArray("keyTerms")
-                        for (j in 0 until tArray.length()) {
-                            val tObj = tArray.getJSONObject(j)
-                            terms.add(
-                                KeyTerm(
-                                    termOdia = tObj.getString("termOdia"),
-                                    termEnglish = tObj.getString("termEnglish"),
-                                    definitionOdia = tObj.getString("defOdia"),
-                                    definitionEnglish = tObj.getString("defEng")
-                                )
-                            )
-                        }
-                    }
-                    list.add(
-                        LessonSection(
-                            titleOdia = obj.getString("titleOdia"),
-                            titleEnglish = obj.getString("titleEnglish"),
-                            contentOdia = obj.getString("contentOdia"),
-                            contentEnglish = obj.getString("contentEnglish"),
-                            keyTerms = terms
-                        )
-                    )
-                }
-            } catch (_: Exception) {}
-            return list
-        }
-
-        private fun serializeQuestions(questions: List<QuizQuestion>): String {
-            val array = JSONArray()
-            questions.forEach { q ->
-                val obj = JSONObject().apply {
-                    put("id", q.id)
-                    put("questionOdia", q.questionOdia)
-                    put("questionEnglish", q.questionEnglish)
-                    put("optionsOdia", JSONArray(q.optionsOdia))
-                    put("optionsEnglish", JSONArray(q.optionsEnglish))
-                    put("correctIndex", q.correctIndex)
-                    put("explanationOdia", q.explanationOdia)
-                    put("explanationEnglish", q.explanationEnglish)
-                    put("conceptTag", q.conceptTag)
-                    put("misconceptionHintOdia", q.misconceptionHintOdia)
-                    put("misconceptionHintEnglish", q.misconceptionHintEnglish)
-                }
-                array.put(obj)
-            }
-            return array.toString()
-        }
-
-        private fun parseQuestionsJson(jsonStr: String): List<QuizQuestion> {
-            val list = mutableListOf<QuizQuestion>()
-            try {
-                val array = JSONArray(jsonStr)
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    val optOdia = mutableListOf<String>()
-                    val oOdia = obj.getJSONArray("optionsOdia")
-                    for (k in 0 until oOdia.length()) optOdia.add(oOdia.getString(k))
-
-                    val optEng = mutableListOf<String>()
-                    val oEng = obj.getJSONArray("optionsEnglish")
-                    for (k in 0 until oEng.length()) optEng.add(oEng.getString(k))
-
-                    list.add(
-                        QuizQuestion(
-                            id = obj.getString("id"),
-                            questionOdia = obj.getString("questionOdia"),
-                            questionEnglish = obj.getString("questionEnglish"),
-                            optionsOdia = optOdia,
-                            optionsEnglish = optEng,
-                            correctIndex = obj.getInt("correctIndex"),
-                            explanationOdia = obj.getString("explanationOdia"),
-                            explanationEnglish = obj.getString("explanationEnglish"),
-                            conceptTag = obj.getString("conceptTag"),
-                            misconceptionHintOdia = obj.getString("misconceptionHintOdia"),
-                            misconceptionHintEnglish = obj.getString("misconceptionHintEnglish")
-                        )
-                    )
-                }
-            } catch (_: Exception) {}
-            return list
-        }
-    }
-}
+// LearningPackEntity is defined in LearningPackEntity.kt
 
 @Entity(tableName = "quiz_attempts")
 data class QuizAttemptEntity(
@@ -327,7 +128,10 @@ data class TutorMessageEntity(
     val textEnglish: String,
     val timestamp: Long,
     val isOfflineGrounded: Boolean,
-    val sourceChapter: String?
+    val sourceChapter: String?,
+    val isStudyRelated: Boolean = true,
+    val isCloudAI: Boolean = false,
+    val sourceTagsJson: String = "[]"
 ) {
     fun toDomain(): TutorMessage = TutorMessage(
         id = messageId,
@@ -336,6 +140,24 @@ data class TutorMessageEntity(
         textEnglish = textEnglish,
         timestamp = timestamp,
         isOfflineGrounded = isOfflineGrounded,
-        sourceChapter = sourceChapter
+        sourceChapter = sourceChapter,
+        isStudyRelated = isStudyRelated,
+        isCloudAI = isCloudAI,
+        sourceTags = QuizAttemptEntity.parseTags(sourceTagsJson)
     )
+
+    companion object {
+        fun fromDomain(msg: TutorMessage): TutorMessageEntity = TutorMessageEntity(
+            messageId = msg.id,
+            senderName = msg.sender.name,
+            textOdia = msg.textOdia,
+            textEnglish = msg.textEnglish,
+            timestamp = msg.timestamp,
+            isOfflineGrounded = msg.isOfflineGrounded,
+            sourceChapter = msg.sourceChapter,
+            isStudyRelated = msg.isStudyRelated,
+            isCloudAI = msg.isCloudAI,
+            sourceTagsJson = if (msg.sourceTags.isEmpty()) "[]" else JSONArray(msg.sourceTags).toString()
+        )
+    }
 }

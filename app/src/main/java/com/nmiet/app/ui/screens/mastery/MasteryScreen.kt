@@ -2,6 +2,7 @@ package com.nmiet.app.ui.screens.mastery
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,16 +20,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nmiet.app.domain.model.TopicMastery
@@ -53,7 +59,9 @@ import com.nmiet.app.ui.theme.WarningAmber
 @Composable
 fun MasteryScreen(
     viewModel: MasteryViewModel,
-    onPracticeTopic: (String) -> Unit
+    onReadTopic: (packId: String, sectionTag: String) -> Unit = { _, _ -> },
+    onRetakeTopicQuiz: (packId: String, topicTag: String) -> Unit = { _, _ -> },
+    onPracticeTopic: (String) -> Unit = {}
 ) {
     val masteryList by viewModel.topicMasteryList.collectAsState()
     val attempts by viewModel.quizAttempts.collectAsState()
@@ -61,7 +69,7 @@ fun MasteryScreen(
 
     val overallScore = if (masteryList.isNotEmpty()) {
         masteryList.map { it.masteryScore }.average().toInt()
-    } else 75
+    } else 61
 
     Scaffold(
         topBar = {
@@ -149,7 +157,8 @@ fun MasteryScreen(
                 // Dynamic targeted practice cards
                 TargetedPracticeDeckSection(
                     attempts = attempts,
-                    onPracticeClick = { topicId -> onPracticeTopic(topicId) }
+                    onReadTopic = onReadTopic,
+                    onRetakeTopicQuiz = onRetakeTopicQuiz
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -335,16 +344,18 @@ fun CategorizationTierBadge(scorePercent: Int) {
 @Composable
 fun TargetedPracticeDeckSection(
     attempts: List<com.nmiet.app.domain.model.QuizAttempt>,
-    onPracticeClick: (String) -> Unit
+    onReadTopic: (packId: String, sectionTag: String) -> Unit,
+    onRetakeTopicQuiz: (packId: String, topicTag: String) -> Unit
 ) {
     val packId = "relaynet_class9_science_photosynthesis_v1"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.35f))
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = Icons.Default.FitnessCenter, contentDescription = null, tint = PrimaryBlue)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -355,22 +366,53 @@ fun TargetedPracticeDeckSection(
                     color = PrimaryBlue
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = "Focused diagnostic practice loop targeting water photolysis, oxygen evolution, and stomatal gas regulation.",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Button(
-                onClick = { onPracticeClick(packId) },
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Launch Targeted Practice Loop", fontSize = 12.sp)
+                // Button 1: 📖 Read Topic (ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ)
+                OutlinedButton(
+                    onClick = { onReadTopic(packId, "photolysis") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "📖 Read Topic\n(ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp
+                    )
+                }
+
+                // Button 2: 🎯 Retake Topic Quiz (ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ)
+                Button(
+                    onClick = { onRetakeTopicQuiz(packId, "PHOTOLYSIS_WATER") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                ) {
+                    Icon(imageVector = Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "🎯 Retake Quiz\n(ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp
+                    )
+                }
             }
         }
     }

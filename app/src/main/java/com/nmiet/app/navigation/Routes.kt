@@ -22,9 +22,20 @@ object Routes {
     const val MESH_SHARE = "mesh"
     const val MASTERY = "mastery"
     const val SETTINGS = "settings"
-    const val LESSON_READER = "lesson/{packId}"
-    const val QUIZ_RUNNER = "quiz/{packId}"
+    const val LESSON_READER = "lesson/{packId}?section={section}"
+    const val QUIZ_RUNNER = "quiz/{packId}?topicTag={topicTag}"
+    const val NOTES_VIEW = "notes?topicId={topicId}"
+    const val CUSTOM_QUIZ = "custom_quiz?topicId={topicId}"
 
-    fun lessonReader(packId: String): String = "lesson/$packId"
-    fun quizRunner(packId: String): String = "quiz/$packId"
+    fun lessonReader(packId: String, section: String? = null): String =
+        if (!section.isNullOrBlank()) "lesson/$packId?section=$section" else "lesson/$packId"
+
+    fun quizRunner(packId: String, topicTag: String? = null): String =
+        if (!topicTag.isNullOrBlank()) "quiz/$packId?topicTag=$topicTag" else "quiz/$packId"
+
+    fun notesView(topicId: String = "relaynet_class9_science_photosynthesis_v1"): String =
+        "notes?topicId=$topicId"
+
+    fun customQuiz(topicId: String = "relaynet_class9_science_photosynthesis_v1"): String =
+        "custom_quiz?topicId=$topicId"
 }
