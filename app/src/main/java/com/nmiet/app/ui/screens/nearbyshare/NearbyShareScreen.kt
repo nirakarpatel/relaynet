@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nmiet.app.domain.model.PeerDevice
@@ -106,29 +108,43 @@ fun NearbyShareScreen(
             item {
                 Spacer(modifier = Modifier.height(10.dp))
 
+                val isSending = shareDirection == ShareDirection.SEND
+
                 // Segmented Toggle: Send Packs vs Receive Packs
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     SegmentedButton(
-                        selected = shareDirection == ShareDirection.SEND,
+                        selected = isSending,
                         onClick = { viewModel.setShareDirection(ShareDirection.SEND) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                    ) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Send Packs (ପାଠ ପଠାନ୍ତୁ)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = {},
+                        label = {
+                            Text(
+                                text = "Send (ପଠାନ୍ତୁ)",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    )
 
                     SegmentedButton(
-                        selected = shareDirection == ShareDirection.RECEIVE,
+                        selected = !isSending,
                         onClick = { viewModel.setShareDirection(ShareDirection.RECEIVE) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                    ) {
-                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Receive Packs (ଗ୍ରହଣ କରନ୍ତୁ)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = {},
+                        label = {
+                            Text(
+                                text = "Receive (ଗ୍ରହଣ କରନ୍ତୁ)",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -243,7 +259,10 @@ fun NearbyShareScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
@@ -272,11 +291,14 @@ fun NearbyShareScreen(
                                 }
                             }
 
+                            Spacer(modifier = Modifier.width(8.dp))
+
                             Button(
                                 onClick = { if (isScanning) viewModel.stopScanning() else viewModel.startScanning() },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isScanning) MaterialTheme.colorScheme.error else PrimaryBlue
-                                )
+                                ),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isScanning) Icons.Default.Stop else Icons.AutoMirrored.Filled.BluetoothSearching,
@@ -284,7 +306,7 @@ fun NearbyShareScreen(
                                     modifier = Modifier.size(15.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (isScanning) "Stop" else "Scan Radar", fontSize = 11.sp)
+                                Text(if (isScanning) "Stop" else "Scan Radar", fontSize = 11.sp, maxLines = 1)
                             }
                         }
 

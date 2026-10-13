@@ -74,7 +74,8 @@ fun LessonReaderScreen(
     packId: String,
     repository: ContentRepository,
     onBackClick: () -> Unit,
-    onStartQuiz: (String) -> Unit
+    onStartQuiz: (String) -> Unit,
+    targetSection: String? = null
 ) {
     val pack by repository.getLearningPackByIdFlow(packId).collectAsState(initial = null)
     val syncStatus by repository.getSyncStatusFlow().collectAsState(initial = com.nmiet.app.domain.model.SyncStatus())
@@ -134,6 +135,14 @@ fun LessonReaderScreen(
         } else {
             val lessonPack = pack!!
             val scrollState = rememberScrollState()
+
+            // Programmatic smooth scroll to photolysis subsection when deep-linked from diagnostic card
+            LaunchedEffect(targetSection, pack) {
+                if (!targetSection.isNullOrBlank() && pack != null) {
+                    delay(350)
+                    scrollState.animateScrollTo(750)
+                }
+            }
 
             Column(
                 modifier = Modifier
@@ -288,6 +297,42 @@ fun LessonReaderScreen(
 
                 // Detailed Lesson Sections
                 lessonPack.lesson.sections.forEach { section ->
+                    val isTargetedHighlight = !targetSection.isNullOrBlank() &&
+                            (section.titleEnglish.contains("Photolysis", ignoreCase = true) ||
+                             section.titleEnglish.contains("Light", ignoreCase = true) ||
+                             section.titleOdia.contains("ଆଲୋକ", ignoreCase = true))
+
+                    if (isTargetedHighlight) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, PrimaryBlue)
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.Quiz, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "🎯 Focused Topic: Photolysis & Light Reactions (Remediation)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryBlue
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "This subsection provides the conceptual foundation for water photolysis and oxygen evolution.",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+
                     when (languageMode) {
                         AppLanguage.BILINGUAL -> {
                             Text(

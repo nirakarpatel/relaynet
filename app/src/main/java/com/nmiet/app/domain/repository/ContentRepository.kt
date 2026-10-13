@@ -1,5 +1,6 @@
 package com.nmiet.app.domain.repository
 
+import android.graphics.Bitmap
 import com.nmiet.app.domain.model.CurriculumNode
 import com.nmiet.app.domain.model.LearnerProfile
 import com.nmiet.app.domain.model.LearningPack
@@ -15,6 +16,8 @@ interface ContentRepository {
 
     fun getCurriculumNodesFlow(): Flow<List<CurriculumNode>>
     fun getLearningPacksFlow(): Flow<List<LearningPack>>
+    fun getDownloadedPacksFlow(): Flow<List<LearningPack>>
+    fun getSharedPacksFlow(): Flow<List<LearningPack>>
     fun getLearningPackByIdFlow(packId: String): Flow<LearningPack?>
     fun getTopicMasteryFlow(): Flow<List<TopicMastery>>
     fun getRecentQuizAttemptsFlow(): Flow<List<QuizAttempt>>
@@ -30,9 +33,20 @@ interface ContentRepository {
         weakConcepts: List<String>
     )
 
-    suspend fun askTutor(questionText: String): TutorMessage
+    suspend fun askTutor(
+        questionText: String,
+        imageBitmap: Bitmap? = null,
+        language: String = "odia"
+    ): TutorMessage
+
     suspend fun saveIncomingLearningPack(pack: LearningPack, peerName: String)
     suspend fun deleteLearningPack(packId: String)
     suspend fun resetToPilotDemoPacks()
     fun setSimulatedNetworkOnline(isOnline: Boolean)
+
+    fun getAllGeneratedNotesFlow(): Flow<List<com.nmiet.app.domain.model.GeneratedNote>>
+    suspend fun saveGeneratedNote(note: com.nmiet.app.domain.model.GeneratedNote)
+    suspend fun toggleNoteBookmark(noteId: String, isBookmarked: Boolean)
+    suspend fun deleteGeneratedNote(noteId: String)
+    suspend fun getPackByIdOnce(packId: String): LearningPack?
 }

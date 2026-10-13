@@ -1,0 +1,139 @@
+package com.nmiet.app.domain.model
+
+import org.json.JSONArray
+import org.json.JSONObject
+
+data class NoteConceptPoint(
+    val pointOdia: String,
+    val pointEnglish: String
+)
+
+data class GeneratedNote(
+    val noteId: String,
+    val topicId: String,
+    val topicName: String,
+    val titleOdia: String,
+    val titleEnglish: String,
+    val summaryOdia: String,
+    val summaryEnglish: String,
+    val keyConcepts: List<NoteConceptPoint>,
+    val formulasEquations: List<String>,
+    val examTips: List<String>,
+    val createdAt: Long = System.currentTimeMillis(),
+    val isBookmarked: Boolean = false,
+    val isOfflineGenerated: Boolean = true
+) {
+    fun toJson(): String {
+        val root = JSONObject().apply {
+            put("note_id", noteId)
+            put("topic_id", topicId)
+            put("topic_name", topicName)
+            put("title_odia", titleOdia)
+            put("title_english", titleEnglish)
+            put("summary_odia", summaryOdia)
+            put("summary_english", summaryEnglish)
+            put("is_offline_generated", isOfflineGenerated)
+
+            val conceptsArr = JSONArray()
+            keyConcepts.forEach { point ->
+                val pObj = JSONObject().apply {
+                    put("point_odia", point.pointOdia)
+                    put("point_english", point.pointEnglish)
+                }
+                conceptsArr.put(pObj)
+            }
+            put("key_concepts", conceptsArr)
+
+            val formulasArr = JSONArray()
+            formulasEquations.forEach { formulasArr.put(it) }
+            put("formulas_equations", formulasArr)
+
+            val tipsArr = JSONArray()
+            examTips.forEach { tipsArr.put(it) }
+            put("exam_tips", tipsArr)
+        }
+        return root.toString()
+    }
+
+    companion object {
+        fun fromJson(
+            noteId: String,
+            topicId: String,
+            topicName: String,
+            titleOdia: String,
+            titleEnglish: String,
+            jsonString: String,
+            createdAt: Long,
+            isBookmarked: Boolean
+        ): GeneratedNote {
+            return try {
+                val json = JSONObject(jsonString)
+                val summaryOdia = json.optString("summary_odia", json.optString("summary", ""))
+                val summaryEng = json.optString("summary_english", json.optString("summary", ""))
+
+                val concepts = mutableListOf<NoteConceptPoint>()
+                val conceptsArr = json.optJSONArray("key_concepts")
+                if (conceptsArr != null) {
+                    for (i in 0 until conceptsArr.length()) {
+                        val obj = conceptsArr.getJSONObject(i)
+                        concepts.add(
+                            NoteConceptPoint(
+                                pointOdia = obj.optString("point_odia", ""),
+                                pointEnglish = obj.optString("point_english", "")
+                            )
+                        )
+                    }
+                }
+
+                val formulas = mutableListOf<String>()
+                val formulasArr = json.optJSONArray("formulas_equations")
+                if (formulasArr != null) {
+                    for (i in 0 until formulasArr.length()) {
+                        formulas.add(formulasArr.getString(i))
+                    }
+                }
+
+                val tips = mutableListOf<String>()
+                val tipsArr = json.optJSONArray("exam_tips")
+                if (tipsArr != null) {
+                    for (i in 0 until tipsArr.length()) {
+                        tips.add(tipsArr.getString(i))
+                    }
+                }
+
+                GeneratedNote(
+                    noteId = noteId,
+                    topicId = topicId,
+                    topicName = topicName,
+                    titleOdia = titleOdia.ifBlank { json.optString("title_odia", "ଆଲୋକ ଶ୍ଳେଷଣ ସାରାଂଶ") },
+                    titleEnglish = titleEnglish.ifBlank { json.optString("title_english", "Photosynthesis Key Revision Notes") },
+                    summaryOdia = summaryOdia,
+                    summaryEnglish = summaryEng,
+                    keyConcepts = concepts,
+                    formulasEquations = formulas,
+                    examTips = tips,
+                    createdAt = createdAt,
+                    isBookmarked = isBookmarked,
+                    isOfflineGenerated = json.optBoolean("is_offline_generated", true)
+                )
+            } catch (_: Exception) {
+                // Fallback default note
+                GeneratedNote(
+                    noteId = noteId,
+                    topicId = topicId,
+                    topicName = topicName,
+                    titleOdia = titleOdia,
+                    titleEnglish = titleEnglish,
+                    summaryOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା ଦ୍ୱାରା ସବୁଜ ଉଦ୍ଭିଦ ସୂର୍ଯ୍ୟାଲୋକ ବ୍ୟବହାର କରି ଶର୍କରା ପ୍ରସ୍ତୁତ କରେ।",
+                    summaryEnglish = "Photosynthesis enables green plants to synthesize glucose using solar energy and chlorophyll.",
+                    keyConcepts = emptyList(),
+                    formulasEquations = listOf("6CO₂ + 12H₂O ──> C₆H₁₂O₆ + 6O₂ + 6H₂O"),
+                    examTips = listOf("Always mention photolysis of water when asked about oxygen source."),
+                    createdAt = createdAt,
+                    isBookmarked = isBookmarked,
+                    isOfflineGenerated = true
+                )
+            }
+        }
+    }
+}

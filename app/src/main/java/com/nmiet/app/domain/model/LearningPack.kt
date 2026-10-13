@@ -1,5 +1,12 @@
 package com.nmiet.app.domain.model
 
+enum class ContentOrigin {
+    CLOUD_DOWNLOADED,    // Downloaded directly via cloud gateway
+    P2P_RECEIVED,        // Received from peer via Bluetooth RFCOMM
+    INTERNET_DOWNLOADED, // Backward compatibility alias
+    P2P_SENT             // Shared outward to peers
+}
+
 data class KeyTerm(
     val termOdia: String,
     val termEnglish: String,
@@ -29,10 +36,11 @@ data class LearningPack(
     val board: Board,
     val classGrade: Int,
     val subject: String,
-    val chapterOdia: String,
-    val chapterEnglish: String,
-    val topicOdia: String,
-    val topicEnglish: String,
+    val chapterNumber: Int = 4,
+    val chapterOdia: String = "",
+    val chapterEnglish: String = "",
+    val topicOdia: String = "",
+    val topicEnglish: String = "",
     val version: Int = 1,
     val lesson: LessonData,
     val quizQuestions: List<QuizQuestion>,
@@ -41,5 +49,7 @@ data class LearningPack(
     val isDownloaded: Boolean = true,
     val isReceivedViaMesh: Boolean = false,
     val peerSenderName: String? = null,
-    val sourceAttribution: String = "Odisha State Bureau of Textbook Preparation & NCERT Curriculum"
+    val sourceAttribution: String = "Odisha State Bureau of Textbook Preparation & NCERT Curriculum",
+    val origin: ContentOrigin = ContentOrigin.INTERNET_DOWNLOADED,
+    val receivedTimestamp: Long = System.currentTimeMillis()
 )
