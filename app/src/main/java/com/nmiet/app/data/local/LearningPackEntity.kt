@@ -38,7 +38,8 @@ data class LearningPackEntity(
     val sectionsJson: String = "[]",
     val quizQuestionsJson: String = "[]",
     val sizeBytes: Long = 1887436L,
-    val sourceAttribution: String = "Odisha State Board (BSE) & NCERT"
+    val sourceAttribution: String = "Odisha State Board (BSE) & NCERT",
+    val diagramLocalPath: String? = null
 ) {
     fun toDomain(): LearningPack {
         val boardEnum = try { Board.valueOf(board) } catch (_: Exception) { Board.ODISHA_STATE }
@@ -71,7 +72,8 @@ data class LearningPackEntity(
             isDownloaded = isCachedLocally,
             isReceivedViaMesh = (origin == ContentOrigin.P2P_RECEIVED || origin == ContentOrigin.P2P_SENT),
             peerSenderName = senderPeerName,
-            sourceAttribution = sourceAttribution
+            sourceAttribution = sourceAttribution,
+            diagramLocalPath = diagramLocalPath
         )
     }
 
@@ -101,7 +103,8 @@ data class LearningPackEntity(
                 sectionsJson = serializeSections(pack.lesson.sections),
                 quizQuestionsJson = serializeQuestions(pack.quizQuestions),
                 sizeBytes = pack.sizeBytes,
-                sourceAttribution = pack.sourceAttribution
+                sourceAttribution = pack.sourceAttribution,
+                diagramLocalPath = pack.diagramLocalPath
             )
         }
 

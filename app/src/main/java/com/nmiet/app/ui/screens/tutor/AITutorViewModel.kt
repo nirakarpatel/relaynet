@@ -47,6 +47,12 @@ class AITutorViewModel(
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
+    private val _isScanningImage = MutableStateFlow(false)
+    val isScanningImage: StateFlow<Boolean> = _isScanningImage.asStateFlow()
+
+    private val _offlineNotice = MutableStateFlow<String?>(null)
+    val offlineNotice: StateFlow<String?> = _offlineNotice.asStateFlow()
+
     fun onInputTextChanged(text: String) {
         _inputText.value = text
     }
@@ -69,10 +75,20 @@ class AITutorViewModel(
         _attachedImage.value = null
     }
 
+    fun clearOfflineNotice() {
+        _offlineNotice.value = null
+    }
+
     fun sendMessage(text: String = _inputText.value) {
         val query = text.trim()
         val image = _attachedImage.value
         if (query.isBlank() && image == null) return
+
+        // 4. Offline Handling for Photo Scan
+        if (image != null && !syncStatus.value.isOnline) {
+            _offlineNotice.value = "Photo scan requires cloud connectivity. Text queries can still be answered offline using local Room cache."
+            return
+        }
 
         val sendQuery = if (query.isNotBlank()) query else "Analyze and solve this textbook problem / diagram."
         _inputText.value = ""
@@ -80,8 +96,35 @@ class AITutorViewModel(
 
         viewModelScope.launch {
             _isGenerating.value = true
-            repository.askTutor(questionText = sendQuery, imageBitmap = image)
-            _isGenerating.value = false
+            try {
+                if (image != null) {
+                    _isScanningImage.value = true
+                    val langCode = when (currentLanguage.value) {
+                        AppLanguage.ENGLISH_ONLY -> "en"
+                        AppLanguage.ODIA_ONLY -> "or"
+                        AppLanguage.HINDI_ONLY -> "hi"
+                        AppLanguage.BILINGUAL_EN_HI -> "en_hi"
+                        AppLanguage.BILINGUAL_EN_OR -> "en_or"
+                    }
+                    repository.scanAndSolveTextbook(
+                        imageBitmap = image,
+                        userPrompt = if (query.isNotBlank()) query else null,
+                        language = langCode
+                    )
+                } else {
+                    val langCode = when (currentLanguage.value) {
+                        AppLanguage.ENGLISH_ONLY -> "english"
+                        AppLanguage.ODIA_ONLY -> "odia"
+                        AppLanguage.HINDI_ONLY -> "hindi"
+                        AppLanguage.BILINGUAL_EN_HI -> "bilingual_hi"
+                        AppLanguage.BILINGUAL_EN_OR -> "bilingual_or"
+                    }
+                    repository.askTutor(questionText = sendQuery, imageBitmap = null, language = langCode)
+                }
+            } finally {
+                _isScanningImage.value = false
+                _isGenerating.value = false
+            }
         }
     }
 
