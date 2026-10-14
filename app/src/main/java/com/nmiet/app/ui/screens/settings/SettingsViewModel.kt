@@ -62,6 +62,27 @@ class SettingsViewModel(
         }
     }
 
+    fun updateLearnerName(name: String) {
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(name = name))
+        }
+    }
+
+    fun resetLearnerProfile() {
+        viewModelScope.launch {
+            repository.updateLearnerProfile(
+                LearnerProfile(
+                    studentId = "student_pilot_01",
+                    name = "Soumya Ranjan",
+                    classGrade = 9,
+                    board = Board.ODISHA_STATE,
+                    preferredLanguage = AppLanguage.BILINGUAL_EN_OR
+                )
+            )
+        }
+    }
+
     fun updateLanguage(lang: AppLanguage) {
         val current = profile.value
         languageManager.setLanguage(lang)
