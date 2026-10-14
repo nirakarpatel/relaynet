@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -409,121 +410,7 @@ fun AppSettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
 
-            // Section 4: Learner Profile & Language Selection
-            Text(
-                text = "Learner Profile Settings (ଭାଷା ପସନ୍ଦ)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Educational Board:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Board.entries.forEach { b ->
-                            FilterChip(
-                                selected = profile.board == b,
-                                onClick = { settingsViewModel.updateBoard(b) },
-                                label = { Text(b.code, fontSize = 11.sp) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(text = "Class Grade (ଶ୍ରେଣୀ):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        listOf(6, 7, 8, 9, 10).forEach { grade ->
-                            FilterChip(
-                                selected = profile.classGrade == grade,
-                                onClick = { settingsViewModel.updateGrade(grade) },
-                                label = { Text("Class $grade", fontSize = 11.sp) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "Preferred Language (ଭାଷା ପସନ୍ଦ / भाषा चयन):",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val languageOptions = listOf(
-                            AppLanguage.ENGLISH_ONLY to "English",
-                            AppLanguage.ODIA_ONLY to "ଓଡ଼ିଆ (Odia)",
-                            AppLanguage.HINDI_ONLY to "हिंदी (Hindi)",
-                            AppLanguage.BILINGUAL_EN_HI to "English + हिंदी",
-                            AppLanguage.BILINGUAL_EN_OR to "English + ଓଡ଼ିଆ"
-                        )
-
-                        languageOptions.forEach { (lang, label) ->
-                            val isSelected = currentLanguage == lang
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { settingsViewModel.updateLanguage(lang) },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                ),
-                                border = if (isSelected)
-                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                                else null
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = label,
-                                        fontSize = 13.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                                    )
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = "Selected",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
 
             // Section 5: Bluetooth Hardware & Permission Checks
             Card(
@@ -738,7 +625,7 @@ fun AppSettingsScreen(
             }
 
             // Bottom padding to clear NavigationBar and floating voice assistant mic button
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 

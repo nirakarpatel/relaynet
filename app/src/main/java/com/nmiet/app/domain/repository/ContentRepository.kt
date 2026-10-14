@@ -16,6 +16,7 @@ interface ContentRepository {
 
     fun getCurriculumNodesFlow(): Flow<List<CurriculumNode>>
     fun getLearningPacksFlow(): Flow<List<LearningPack>>
+    fun getPacksForStudentFlow(board: String, grade: String): Flow<List<LearningPack>>
     fun getDownloadedPacksFlow(): Flow<List<LearningPack>>
     fun getSharedPacksFlow(): Flow<List<LearningPack>>
     fun getLearningPackByIdFlow(packId: String): Flow<LearningPack?>

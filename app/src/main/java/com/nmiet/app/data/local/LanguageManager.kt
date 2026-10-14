@@ -13,13 +13,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-private val Context.dataStore by preferencesDataStore(name = "relaynet_preferences")
-
 class LanguageManager(private val context: Context) {
     private val scope = CoroutineScope(Dispatchers.IO)
     private val languageKey = stringPreferencesKey("app_language_mode")
 
-    val currentLanguage: StateFlow<AppLanguage> = context.dataStore.data
+    val currentLanguage: StateFlow<AppLanguage> = context.relaynetDataStore.data
         .map { preferences ->
             AppLanguage.fromCode(preferences[languageKey])
         }
@@ -31,7 +29,7 @@ class LanguageManager(private val context: Context) {
 
     fun setLanguage(language: AppLanguage) {
         scope.launch {
-            context.dataStore.edit { preferences ->
+            context.relaynetDataStore.edit { preferences ->
                 preferences[languageKey] = language.code
             }
         }

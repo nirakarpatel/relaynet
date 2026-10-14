@@ -45,7 +45,7 @@ data class LearnerProfileEntity(
                 profileId = profile.studentId,
                 name = profile.name,
                 board = profile.board.name,
-                grade = profile.classGrade,
+                grade = profile.gradeInt,
                 languagePreference = profile.preferredLanguage.name
             )
         }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -358,8 +359,15 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             // Section 4: Learner Profile & Curriculum Selection
+            val profileSettingsTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Learner Profile Settings"
+                AppLanguage.ODIA_ONLY -> "ଶିକ୍ଷାର୍ଥୀ ପ୍ରୋଫାଇଲ୍ ସେଟିଙ୍ଗ୍ (ଭାଷା ପସନ୍ଦ)"
+                AppLanguage.HINDI_ONLY -> "शिक्षार्थी प्रोफ़ाइल सेटिंग्स (भाषा चयन)"
+                AppLanguage.BILINGUAL_EN_HI -> "Learner Profile Settings (शिक्षार्थी प्रोफ़ाइल / भाषा चयन)"
+                AppLanguage.BILINGUAL_EN_OR -> "Learner Profile Settings (ଭାଷା ପସନ୍ଦ)"
+            }
             Text(
-                text = "Learner Profile Settings (ପ୍ରୋଫାଇଲ୍)",
+                text = profileSettingsTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -374,31 +382,56 @@ fun SettingsScreen(
                     Text(text = "Educational Board:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Board.entries.forEach { b ->
                             FilterChip(
                                 selected = profile.board == b,
                                 onClick = { viewModel.updateBoard(b) },
-                                label = { Text(b.code, fontSize = 11.sp) }
+                                label = {
+                                    Text(
+                                        text = b.code,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(text = "Class Grade (ଶ୍ରେଣୀ):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    val classGradeLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Class Grade:"
+                        AppLanguage.ODIA_ONLY -> "Class Grade (ଶ୍ରେଣୀ):"
+                        AppLanguage.HINDI_ONLY -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_HI -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_OR -> "Class Grade (ଶ୍ରେଣୀ):"
+                    }
+                    Text(text = classGradeLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(6, 7, 8, 9, 10).forEach { grade ->
                             FilterChip(
-                                selected = profile.classGrade == grade,
+                                selected = profile.gradeInt == grade || profile.classGrade == "Class $grade",
                                 onClick = { viewModel.updateGrade(grade) },
-                                label = { Text("Class $grade", fontSize = 11.sp) }
+                                label = {
+                                    Text(
+                                        text = "Class $grade",
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
                             )
                         }
                     }
@@ -683,7 +716,8 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
