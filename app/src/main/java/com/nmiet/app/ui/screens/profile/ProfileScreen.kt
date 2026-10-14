@@ -1,13 +1,13 @@
 package com.nmiet.app.ui.screens.profile
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,20 +23,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.CellTower
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,15 +58,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.navigation.Screen
-import com.nmiet.app.permissions.NearbyPermissionManager
 import com.nmiet.app.ui.components.AppTopBar
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.theme.PrimaryBlue
@@ -80,26 +75,13 @@ fun ProfileScreen(
     navController: NavController,
     settingsViewModel: SettingsViewModel
 ) {
-    val context = LocalContext.current
     val profile by settingsViewModel.profile.collectAsState()
+    val currentLanguage by settingsViewModel.currentLanguage.collectAsState()
     val syncStatus by settingsViewModel.syncStatus.collectAsState()
-    val isBluetoothEnabled by settingsViewModel.isBluetoothEnabled.collectAsState()
-    val hasNearbyPermissions by settingsViewModel.hasPermissions.collectAsState()
-    val audioCacheSizeMb by settingsViewModel.audioCacheSizeMb.collectAsState()
-    val diagramsCacheSizeMb by settingsViewModel.diagramsCacheSizeMb.collectAsState()
-    val coreDataSizeMb by settingsViewModel.coreDataSizeMb.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
-    var editedName by remember(profile.name) { mutableStateOf(profile.name) }
-
-    // Bluetooth detailed permission check
-    val hasScanAndConnect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
-    } else {
-        hasNearbyPermissions
-    }
+    var editedName by remember(profile.studentName) { mutableStateOf(profile.studentName) }
 
     Scaffold(
         topBar = {
@@ -145,7 +127,7 @@ fun ProfileScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                val initials = profile.name.split(" ")
+                                val initials = profile.studentName.split(" ")
                                     .filter { it.isNotBlank() }
                                     .take(2)
                                     .mapNotNull { it.firstOrNull()?.uppercase() }
@@ -170,19 +152,19 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        editedName = profile.name
+                                        editedName = profile.studentName
                                         showEditProfileDialog = true
                                     }
                             ) {
                                 Text(
-                                    text = profile.name,
+                                    text = profile.studentName,
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 IconButton(
                                     onClick = {
-                                        editedName = profile.name
+                                        editedName = profile.studentName
                                         showEditProfileDialog = true
                                     },
                                     modifier = Modifier.size(44.dp)
@@ -211,7 +193,7 @@ fun ProfileScreen(
                                 modifier = Modifier.padding(vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "Class ${profile.classGrade} • ${profile.board.displayName}",
+                                    text = "${profile.classGrade} • ${profile.educationalBoard}",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -241,18 +223,9 @@ fun ProfileScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Instruction Medium:",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-
-                        val mediumLabel = when (profile.preferredLanguage) {
-                            AppLanguage.ODIA_ONLY -> "ଓଡ଼ିଆ (Odia Medium)"
-                            AppLanguage.HINDI_ONLY -> "हिंदी (Hindi Medium)"
-                            AppLanguage.ENGLISH_ONLY -> "English (English Medium)"
-                            AppLanguage.BILINGUAL_EN_HI -> "Bilingual (English + हिंदी)"
-                            AppLanguage.BILINGUAL_EN_OR -> "Bilingual (English + ଓଡ଼ିଆ)"
                         }
 
                         Surface(
@@ -260,8 +233,8 @@ fun ProfileScreen(
                             color = PrimaryBlue.copy(alpha = 0.12f)
                         ) {
                             Text(
-                                text = mediumLabel,
-                                fontSize = 11.sp,
+                                text = profile.languageMode.displayName,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryBlue,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -273,71 +246,172 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 2. System Health & Runtime Status Summary Cards
+            // 2. Learner Profile Settings (Relocated from AppSettingsScreen)
             Text(
-                text = "System Health & Runtime Status",
+                text = "Learner Profile Settings",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Summary Cards (3 horizontal cards)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Card A: Cloud Gateway Status
-                val isOnline = syncStatus.isOnline
-                HealthStatusCard(
-                    title = "Cloud Gateway Status",
-                    statusText = if (isOnline) "🟢 Cloud Gateway Active" else "🔴 Offline (Room SQLite Active)",
-                    subtitle = if (isOnline) "Connected to online AI cluster & diagnostic sync" else "Zero-connectivity fallback active with full local catalog",
-                    icon = if (isOnline) Icons.Default.Cloud else Icons.Default.CloudOff,
-                    iconTint = if (isOnline) SuccessGreen else MaterialTheme.colorScheme.error,
-                    containerColor = if (isOnline) SuccessGreen.copy(alpha = 0.08f) else MaterialTheme.colorScheme.error.copy(alpha = 0.08f)
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Educational Board Selector: ODISHA_STATE, CBSE, CISCE_ICSE
+                    Text(
+                        text = "Educational Board:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val boardOptions = listOf(
+                            "ODISHA_STATE" to "Odisha State (BSE)",
+                            "CBSE" to "CBSE",
+                            "CISCE_ICSE" to "CISCE / ICSE"
+                        )
+                        boardOptions.forEach { (boardKey, label) ->
+                            val isSelected = profile.educationalBoard == boardKey
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { settingsViewModel.updateEducationalBoard(boardKey) },
+                                label = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            )
+                        }
+                    }
 
-                // Card B: Bluetooth Radio & Permissions Status
-                val btStatusText = when {
-                    !hasScanAndConnect -> "🔴 Permissions Needed"
-                    !isBluetoothEnabled -> "🟡 Radio Off"
-                    else -> "🟢 Bluetooth Ready"
-                }
-                val btSubtitle = when {
-                    !hasScanAndConnect -> "Grant BLUETOOTH_CONNECT & SCAN to enable peer mesh"
-                    !isBluetoothEnabled -> "Turn on device Bluetooth adapter for P2P transfers"
-                    else -> "RFCOMM socket listener ready for local classroom broadcast"
-                }
-                val btTint = when {
-                    !hasScanAndConnect -> MaterialTheme.colorScheme.error
-                    !isBluetoothEnabled -> WarningAmber
-                    else -> SuccessGreen
-                }
-                HealthStatusCard(
-                    title = "Bluetooth Radio & Permissions",
-                    statusText = btStatusText,
-                    subtitle = btSubtitle,
-                    icon = Icons.Default.Bluetooth,
-                    iconTint = btTint,
-                    containerColor = btTint.copy(alpha = 0.08f),
-                    onClick = { navController.navigate(Screen.ConnectivityPermissions.route) }
-                )
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                // Card C: Offline Storage Footprint
-                val totalFootprintMb = "%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)
-                HealthStatusCard(
-                    title = "Offline Storage Footprint",
-                    statusText = "💾 $totalFootprintMb MB Total",
-                    subtitle = "${"%.1f".format(coreDataSizeMb)} MB Core • ${"%.1f".format(diagramsCacheSizeMb)} MB Diagrams • ${"%.1f".format(audioCacheSizeMb)} MB Audio",
-                    icon = Icons.Default.Storage,
-                    iconTint = PrimaryBlue,
-                    containerColor = PrimaryBlue.copy(alpha = 0.08f),
-                    onClick = { navController.navigate(Screen.OfflineContent.route) }
-                )
+                    // Class Grade Selector: Class 6, Class 7, Class 8, Class 9, Class 10 (horizontal scroll, spacedBy 8.dp, no wrapping)
+                    val classGradeLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Class Grade:"
+                        AppLanguage.ODIA_ONLY -> "Class Grade (ଶ୍ରେଣୀ):"
+                        AppLanguage.HINDI_ONLY -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_HI -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_OR -> "Class Grade (ଶ୍ରେଣୀ):"
+                    }
+                    Text(
+                        text = classGradeLabel,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Class 6", "Class 7", "Class 8", "Class 9", "Class 10").forEach { grade ->
+                            val isSelected = profile.classGrade == grade
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { settingsViewModel.updateClassGrade(grade) },
+                                label = {
+                                    Text(
+                                        text = grade,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Language Preference Selector: 5-mode list
+                    Text(
+                        text = "Language Preference (ଭାଷା ପସନ୍ଦ / भाषा चयन):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val languageOptions = listOf(
+                            AppLanguage.ENGLISH_ONLY to "English",
+                            AppLanguage.ODIA_ONLY to "ଓଡ଼ିଆ (Odia)",
+                            AppLanguage.HINDI_ONLY to "हिंदी (Hindi)",
+                            AppLanguage.BILINGUAL_EN_HI to "English + हिंदी",
+                            AppLanguage.BILINGUAL_EN_OR to "English + ଓଡ଼ିଆ"
+                        )
+
+                        languageOptions.forEach { (lang, label) ->
+                            val isSelected = currentLanguage == lang
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { settingsViewModel.updateLanguage(lang) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ),
+                                border = if (isSelected)
+                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                else null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. Menu Navigation List
+            // 3. Menu Navigation List (Preferences & System Controls)
             Text(
                 text = "Preferences & System Controls",
                 style = MaterialTheme.typography.titleMedium,
@@ -359,7 +433,7 @@ fun ProfileScreen(
                         icon = Icons.Default.Settings,
                         iconTint = PrimaryBlue,
                         title = "App Settings",
-                        subtitle = "Language preferences, offline simulator, cache cleaner, and dev tools.",
+                        subtitle = "Developer options, offline simulation switch, and pilot pack reset.",
                         onClick = { navController.navigate(Screen.AppSettings.route) }
                     )
 
@@ -381,7 +455,7 @@ fun ProfileScreen(
                         icon = Icons.Default.Storage,
                         iconTint = WarningAmber,
                         title = "Offline Content Management",
-                        subtitle = "Manage cached Class 9 packs, clean audio cache, and check sync queue.",
+                        subtitle = "Manage cached packs, clean audio cache, and check sync queue.",
                         onClick = { navController.navigate(Screen.OfflineContent.route) }
                     )
 
@@ -409,9 +483,9 @@ fun ProfileScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 4. Optional Sign Out / Profile Reset Action
+            // 4. Sign Out / Reset Session Action
             OutlinedButton(
                 onClick = { showLogoutDialog = true },
                 modifier = Modifier
@@ -433,8 +507,8 @@ fun ProfileScreen(
                 )
             }
 
-            // Bottom padding to clear NavigationBar and floating voice assistant mic button
-            Spacer(modifier = Modifier.height(88.dp))
+            // Guaranteed bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 
@@ -507,78 +581,6 @@ fun ProfileScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun HealthStatusCard(
-    title: String,
-    statusText: String,
-    subtitle: String,
-    icon: ImageVector,
-    iconTint: Color,
-    containerColor: Color,
-    onClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(iconTint.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = statusText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (onClick != null) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 

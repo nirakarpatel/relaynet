@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.remote.PilotCurriculumCatalog
+import com.nmiet.app.data.repository.UserPreferencesRepository
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.ContentOrigin
@@ -28,16 +29,17 @@ enum class ContentBucketFilter {
 
 class CurriculumViewModel(
     private val repository: ContentRepository,
-    val languageManager: LanguageManager? = null
+    val languageManager: LanguageManager? = null,
+    private val userPreferencesRepository: UserPreferencesRepository? = null
 ) : ViewModel() {
 
-    val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
+    val profile: StateFlow<LearnerProfile> = userPreferencesRepository?.learnerProfile
         ?: repository.getLearnerProfileFlow()
-            .map { it.preferredLanguage }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.BILINGUAL_EN_OR)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())
 
-    val profile: StateFlow<LearnerProfile> = repository.getLearnerProfileFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())
+    val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
+        ?: profile.map { it.languageMode }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.BILINGUAL_EN_HI)
 
     val syncStatus: StateFlow<SyncStatus> = repository.getSyncStatusFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus())
@@ -54,25 +56,43 @@ class CurriculumViewModel(
     private val _selectedSubject = MutableStateFlow<String>("Science (ବିଜ୍ଞାନ)")
     val selectedSubject: StateFlow<String> = _selectedSubject.asStateFlow()
 
-    val downloadedPacksCount: StateFlow<Int> = repository.getDownloadedPacksFlow()
-        .combine(repository.getLearningPacksFlow()) { downloaded, all ->
-            val count = all.count { it.origin in listOf(ContentOrigin.CLOUD_DOWNLOADED, ContentOrigin.INTERNET_DOWNLOADED) && !it.isReceivedViaMesh }
-            if (count > 0) count else downloaded.size
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
+    val downloadedPacksCount: StateFlow<Int> = combine(
+        repository.getLearningPacksFlow(),
+        profile
+    ) { all, prof ->
+        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
+        val targetBoardName = prof.educationalBoard
+        val count = all.count { pack ->
+            pack.origin in listOf(ContentOrigin.CLOUD_DOWNLOADED, ContentOrigin.INTERNET_DOWNLOADED) &&
+                !pack.isReceivedViaMesh &&
+                pack.board.name.equals(targetBoardName, ignoreCase = true) &&
+                (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
+        }
+        count
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
-    val sharedPacksCount: StateFlow<Int> = repository.getSharedPacksFlow()
-        .combine(repository.getLearningPacksFlow()) { shared, all ->
-            val count = all.count { it.origin in listOf(ContentOrigin.P2P_RECEIVED, ContentOrigin.P2P_SENT) || it.isReceivedViaMesh }
-            if (count > 0) count else shared.size
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val sharedPacksCount: StateFlow<Int> = combine(
+        repository.getLearningPacksFlow(),
+        profile
+    ) { all, prof ->
+        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
+        val targetBoardName = prof.educationalBoard
+        val count = all.count { pack ->
+            (pack.origin in listOf(ContentOrigin.P2P_RECEIVED, ContentOrigin.P2P_SENT) || pack.isReceivedViaMesh) &&
+                pack.board.name.equals(targetBoardName, ignoreCase = true) &&
+                (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
+        }
+        count
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val filteredPacks: StateFlow<List<LearningPack>> = combine(
         repository.getLearningPacksFlow(),
-        _selectedBucket,
-        _selectedBoard,
-        _selectedGrade,
-        _selectedSubject
-    ) { allPacks, bucket, board, grade, _ ->
+        profile,
+        _selectedBucket
+    ) { allPacks, prof, bucket ->
+        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
+        val targetBoardName = prof.educationalBoard
+
         allPacks.filter { pack ->
             val matchesBucket = when (bucket) {
                 ContentBucketFilter.DOWNLOADED ->
@@ -80,8 +100,8 @@ class CurriculumViewModel(
                 ContentBucketFilter.SHARED ->
                     pack.origin in listOf(ContentOrigin.P2P_RECEIVED, ContentOrigin.P2P_SENT) || pack.isReceivedViaMesh
             }
-            val matchesBoard = (pack.board == board || board == Board.ODISHA_STATE)
-            val matchesGrade = (pack.classGrade == grade || grade == 9)
+            val matchesBoard = pack.board.name.equals(targetBoardName, ignoreCase = true)
+            val matchesGrade = (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
             matchesBucket && matchesBoard && matchesGrade
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -91,12 +111,13 @@ class CurriculumViewModel(
 
     val allCurriculumNodes: StateFlow<List<CurriculumNode>> = combine(
         repository.getCurriculumNodesFlow(),
-        _selectedBoard,
-        _selectedGrade
-    ) { nodes, board, grade ->
+        profile
+    ) { nodes, prof ->
+        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
+        val targetBoardName = prof.educationalBoard
         nodes.filter { node ->
-            node.board == board && node.classGrade == grade
-        }.ifEmpty { nodes }
+            node.board.name.equals(targetBoardName, ignoreCase = true) && node.classGrade == targetGradeInt
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun onBucketSelected(bucket: ContentBucketFilter) {

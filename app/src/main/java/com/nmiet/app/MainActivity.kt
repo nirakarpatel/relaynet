@@ -60,7 +60,8 @@ class MainActivity : ComponentActivity() {
 
         // 4. Initialize Core ViewModels & Language Engine
         val languageManager = LanguageManager.getInstance(applicationContext)
-        val curriculumViewModel = CurriculumViewModel(repository, languageManager)
+        val userPreferencesRepository = com.nmiet.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
+        val curriculumViewModel = CurriculumViewModel(repository, languageManager, userPreferencesRepository)
         val aiTutorViewModel = AITutorViewModel(repository, languageManager)
         val nearbyShareViewModel = NearbyShareViewModel(
             repository = repository,
@@ -69,7 +70,8 @@ class MainActivity : ComponentActivity() {
             languageManager = languageManager
         )
         val masteryViewModel = MasteryViewModel(repository, languageManager)
-        val settingsViewModel = SettingsViewModel(repository, applicationContext, languageManager)
+        val settingsViewModel = SettingsViewModel(repository, applicationContext, languageManager, userPreferencesRepository)
+        val geminiKeyRotator = com.nmiet.app.data.remote.GeminiKeyRotator.getInstance()
 
         // 5. Mount App Navigation & UI
         setContent {
@@ -84,7 +86,9 @@ class MainActivity : ComponentActivity() {
                         aiTutorViewModel = aiTutorViewModel,
                         nearbyShareViewModel = nearbyShareViewModel,
                         masteryViewModel = masteryViewModel,
-                        settingsViewModel = settingsViewModel
+                        settingsViewModel = settingsViewModel,
+                        languageManager = languageManager,
+                        geminiKeyRotator = geminiKeyRotator
                     )
                 }
             }

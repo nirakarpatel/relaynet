@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.repository.UserPreferencesRepository
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.LearnerProfile
@@ -20,13 +21,13 @@ import kotlinx.coroutines.launch
 class SettingsViewModel(
     private val repository: ContentRepository,
     private val context: Context,
-    val languageManager: LanguageManager = LanguageManager.getInstance(context)
+    val languageManager: LanguageManager = LanguageManager.getInstance(context),
+    val userPreferencesRepository: UserPreferencesRepository = UserPreferencesRepository.getInstance(context)
 ) : ViewModel() {
 
     val currentLanguage: StateFlow<AppLanguage> = languageManager.currentLanguage
 
-    val profile: StateFlow<LearnerProfile> = repository.getLearnerProfileFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())
+    val profile: StateFlow<LearnerProfile> = userPreferencesRepository.learnerProfile
 
     val syncStatus: StateFlow<SyncStatus> = repository.getSyncStatusFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus())
@@ -78,13 +79,32 @@ class SettingsViewModel(
     }
 
     fun updateBoard(board: Board) {
+        userPreferencesRepository.updateEducationalBoard(board.name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(board = board))
+            repository.updateLearnerProfile(current.copy(educationalBoard = board.name))
+        }
+    }
+
+    fun updateEducationalBoard(board: String) {
+        userPreferencesRepository.updateEducationalBoard(board)
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(educationalBoard = board))
         }
     }
 
     fun updateGrade(grade: Int) {
+        val gradeStr = "Class $grade"
+        userPreferencesRepository.updateClassGrade(gradeStr)
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(classGrade = gradeStr))
+        }
+    }
+
+    fun updateClassGrade(grade: String) {
+        userPreferencesRepository.updateClassGrade(grade)
         val current = profile.value
         viewModelScope.launch {
             repository.updateLearnerProfile(current.copy(classGrade = grade))
@@ -92,31 +112,34 @@ class SettingsViewModel(
     }
 
     fun updateLearnerName(name: String) {
+        userPreferencesRepository.updateStudentName(name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(name = name))
+            repository.updateLearnerProfile(current.copy(studentName = name))
         }
     }
 
     fun resetLearnerProfile() {
+        userPreferencesRepository.resetProfile()
         viewModelScope.launch {
             repository.updateLearnerProfile(
                 LearnerProfile(
-                    studentId = "student_pilot_01",
-                    name = "Soumya Ranjan",
-                    classGrade = 9,
-                    board = Board.ODISHA_STATE,
-                    preferredLanguage = AppLanguage.BILINGUAL_EN_OR
+                    studentName = "Soumya Ranjan",
+                    educationalBoard = "ODISHA_STATE",
+                    classGrade = "Class 9",
+                    languageMode = AppLanguage.BILINGUAL_EN_HI,
+                    studentId = "student_pilot_01"
                 )
             )
         }
     }
 
     fun updateLanguage(lang: AppLanguage) {
-        val current = profile.value
         languageManager.setLanguage(lang)
+        userPreferencesRepository.updateLanguageMode(lang)
+        val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(preferredLanguage = lang))
+            repository.updateLearnerProfile(current.copy(languageMode = lang))
         }
     }
 
