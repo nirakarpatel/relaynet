@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
@@ -383,7 +384,7 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf("Class 6", "Class 7", "Class 8", "Class 9", "Class 10").forEach { grade ->
-                            val isSelected = profile.classGrade == grade
+                            val isSelected = profile.classGrade == (grade.filter { it.isDigit() }.toIntOrNull() ?: 9)
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { settingsViewModel.updateClassGrade(grade) },
