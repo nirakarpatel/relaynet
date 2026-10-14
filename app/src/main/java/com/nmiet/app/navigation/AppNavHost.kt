@@ -7,9 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -46,9 +48,14 @@ import com.nmiet.app.ui.screens.nearbyshare.NearbyShareScreen
 import com.nmiet.app.ui.screens.nearbyshare.NearbyShareViewModel
 import com.nmiet.app.ui.screens.notes.NotesGeneratorViewModel
 import com.nmiet.app.ui.screens.notes.NotesViewScreen
+import com.nmiet.app.ui.screens.profile.AboutRelaynetScreen
+import com.nmiet.app.ui.screens.profile.AppSettingsScreen
+import com.nmiet.app.ui.screens.profile.ConnectivityPermissionsScreen
+import com.nmiet.app.ui.screens.profile.OfflineContentScreen
+import com.nmiet.app.ui.screens.profile.PrivacySecurityScreen
+import com.nmiet.app.ui.screens.profile.ProfileScreen
 import com.nmiet.app.ui.screens.quiz.QuizRunnerScreen
 import com.nmiet.app.ui.screens.quiz.QuizViewModel
-import com.nmiet.app.ui.screens.settings.SettingsScreen
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorScreen
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
@@ -73,12 +80,13 @@ fun AppNavHost(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Tab 5: Profile replaces Settings
     val bottomNavItems = listOf(
         Screen.Curriculum,
-        Screen.AITutor,
+        Screen.Tutor,
         Screen.Mastery,
-        Screen.MeshShare,
-        Screen.Settings
+        Screen.NearbyShare,
+        Screen.Profile
     )
 
     val isFullScreen = currentRoute?.startsWith("lesson") == true ||
@@ -100,9 +108,21 @@ fun AppNavHost(
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     bottomNavItems.forEach { screen ->
-                        val isSelected = currentRoute == screen.route
+                        // Profile tab is selected whenever route begins with "profile"
+                        val isSelected = if (screen == Screen.Profile) {
+                            currentRoute?.startsWith("profile") == true
+                        } else {
+                            currentRoute == screen.route
+                        }
+
+                        val icon = if (screen == Screen.Profile) {
+                            if (isSelected) Icons.Default.Person else Icons.Outlined.Person
+                        } else {
+                            screen.icon
+                        }
+
                         NavigationBarItem(
-                            icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
+                            icon = { Icon(imageVector = icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
@@ -127,7 +147,7 @@ fun AppNavHost(
             }
         },
         floatingActionButton = {
-            if (!isFullScreen && currentRoute != Screen.AITutor.route) {
+            if (!isFullScreen && currentRoute != Screen.Tutor.route) {
                 FloatingActionButton(
                     onClick = { voiceManager.startListening() },
                     containerColor = PrimaryBlue,
@@ -202,8 +222,50 @@ fun AppNavHost(
                     )
                 }
 
+                // Profile Overview Root Screen
+                composable(Screen.Profile.route) {
+                    ProfileScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                // Profile Sub-destinations
+                composable(Screen.AppSettings.route) {
+                    AppSettingsScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.ConnectivityPermissions.route) {
+                    ConnectivityPermissionsScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.OfflineContent.route) {
+                    OfflineContentScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.PrivacySecurity.route) {
+                    PrivacySecurityScreen(navController = navController)
+                }
+
+                composable(Screen.AboutRelaynet.route) {
+                    AboutRelaynetScreen(navController = navController)
+                }
+
+                // Backward-compatibility: redirect legacy settings route to AppSettingsScreen
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(viewModel = settingsViewModel)
+                    AppSettingsScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
                 }
 
                 composable(
