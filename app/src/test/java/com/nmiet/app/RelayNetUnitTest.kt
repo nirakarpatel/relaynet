@@ -220,4 +220,59 @@ class RelayNetUnitTest {
         assertEquals("ROUTE_NOTES", parseTestIntent("ନୋଟ୍ ତିଆରି କର"))
         assertEquals("ROUTE_TUTOR_QUERY", parseTestIntent("Where does oxygen come from?"))
     }
+
+    @Test
+    fun regionalLanguageExpansion_containsAllTargetLanguages() {
+        val languages = com.nmiet.app.domain.model.AppLanguage.entries.map { it.name }
+        assertTrue(languages.contains("ODIA"))
+        assertTrue(languages.contains("ENGLISH"))
+        assertTrue(languages.contains("HINDI"))
+        assertTrue(languages.contains("BENGALI"))
+        assertTrue(languages.contains("TAMIL"))
+        assertTrue(languages.contains("TELUGU"))
+    }
+
+    @Test
+    fun contentItem_downloadLifecycleValidation() {
+        val item = com.nmiet.app.domain.model.ContentItem(
+            id = "test_doc",
+            title = "Test PDF",
+            description = "Test Description",
+            mediaType = com.nmiet.app.domain.model.ContentMediaType.PDF_TEXTBOOK,
+            remoteUrl = "https://example.org/doc.pdf",
+            sizeBytes = 2048L,
+            sha256Checksum = "abc123"
+        )
+        assertEquals(com.nmiet.app.domain.model.DownloadStatus.NOT_DOWNLOADED, item.downloadStatus)
+        assertEquals(0, item.downloadProgressPercent)
+
+        val downloading = item.copy(
+            downloadStatus = com.nmiet.app.domain.model.DownloadStatus.DOWNLOADING,
+            downloadProgressPercent = 50
+        )
+        assertEquals(50, downloading.downloadProgressPercent)
+
+        val completed = item.copy(
+            downloadStatus = com.nmiet.app.domain.model.DownloadStatus.COMPLETED,
+            downloadProgressPercent = 100,
+            localFilePath = "/storage/test_doc.pdf"
+        )
+        assertTrue(completed.downloadStatus == com.nmiet.app.domain.model.DownloadStatus.COMPLETED)
+        assertNotNull(completed.localFilePath)
+    }
+
+    @Test
+    fun studyPlanner_taskCompletionTracking() {
+        val task = com.nmiet.app.domain.model.StudyTask(
+            id = "t1",
+            topicId = "topic_1",
+            topicTitle = "Photosynthesis",
+            subject = "Science",
+            scheduledDate = 1000L,
+            isCompleted = false
+        )
+        assertEquals(false, task.isCompleted)
+        val completed = task.copy(isCompleted = true)
+        assertEquals(true, completed.isCompleted)
+    }
 }

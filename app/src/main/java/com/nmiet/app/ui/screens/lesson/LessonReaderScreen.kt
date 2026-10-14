@@ -289,6 +289,15 @@ fun LessonReaderScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
+                    else -> {
+                        // Regional language fallback: display English with note
+                        Text(
+                            text = lessonPack.lesson.summaryEnglish,
+                            fontSize = 14.sp,
+                            lineHeight = 22.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -370,6 +379,21 @@ fun LessonReaderScreen(
                             )
                         }
                         AppLanguage.ENGLISH -> {
+                            Text(
+                                text = section.titleEnglish,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = section.contentEnglish,
+                                fontSize = 14.sp,
+                                lineHeight = 22.sp
+                            )
+                        }
+                        else -> {
+                            // Regional language fallback: display English section
                             Text(
                                 text = section.titleEnglish,
                                 style = MaterialTheme.typography.titleMedium,

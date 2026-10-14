@@ -496,4 +496,185 @@ class ContentRepositoryImpl(
     override suspend fun getPackByIdOnce(packId: String): LearningPack? = withContext(ioDispatcher) {
         learningDao.getPackByIdOnce(packId)?.toDomain()
     }
+
+    // --- LearnLite Content Catalogue & Downloads ---
+    private val _contentItems = MutableStateFlow<List<com.nmiet.app.domain.model.ContentItem>>(
+        listOf(
+            com.nmiet.app.domain.model.ContentItem(
+                id = "doc_class9_sci_photosynthesis_pdf",
+                title = "Class 9 Science: Plant Physiology & Photosynthesis",
+                description = "Complete BSE/CBSE curriculum textbook chapter with diagrams, chemical pathways, and Odia notes.",
+                mediaType = com.nmiet.app.domain.model.ContentMediaType.PDF_TEXTBOOK,
+                remoteUrl = "https://relaynet-cdn.example.org/docs/class9_science_photosynthesis.pdf",
+                localFilePath = null,
+                sizeBytes = 4_250_000L, // 4.25 MB
+                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                classGrade = 9,
+                subject = "Science (Biology)",
+                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
+                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.NOT_DOWNLOADED
+            ),
+            com.nmiet.app.domain.model.ContentItem(
+                id = "vid_class9_sci_photolysis_video",
+                title = "Video Lesson: Water Photolysis & Oxygen Evolution",
+                description = "High-definition bilingual visual breakdown of chloroplast anatomy and the Hill reaction.",
+                mediaType = com.nmiet.app.domain.model.ContentMediaType.VIDEO_LESSON,
+                remoteUrl = "https://relaynet-cdn.example.org/videos/water_photolysis_class9.mp4",
+                localFilePath = null,
+                sizeBytes = 28_400_000L, // 28.4 MB
+                sha256Checksum = "d41d8cd98f00b204e9800998ecf8427e00000000000000000000000000000000",
+                classGrade = 9,
+                subject = "Science (Biology)",
+                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
+                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.NOT_DOWNLOADED
+            ),
+            com.nmiet.app.domain.model.ContentItem(
+                id = "pack_class9_sci_photosynthesis_v1",
+                title = "Offline Learning Pack: Chapter 4 Complete Bundle",
+                description = "Bilingual Odia/English lesson, interactive diagnostic quiz, and formula glossary archive.",
+                mediaType = com.nmiet.app.domain.model.ContentMediaType.LEARNING_PACK_ZIP,
+                remoteUrl = "http://10.0.2.2:8000/content-packs/relaynet_class9_science_photosynthesis_v1/download",
+                localFilePath = "packs/relaynet_class9_science_photosynthesis_v1.zip",
+                sizeBytes = 1_850_000L, // 1.85 MB
+                sha256Checksum = "9b64ff18413a21644d5c41460faec8b8849b38cff1a6c4b2670d9a6c98dc4627",
+                classGrade = 9,
+                subject = "Science (Biology)",
+                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
+                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.COMPLETED,
+                downloadProgressPercent = 100
+            )
+        )
+    )
+
+    override fun getContentItemsFlow(): Flow<List<com.nmiet.app.domain.model.ContentItem>> =
+        _contentItems.asStateFlow()
+
+    override suspend fun updateContentItem(item: com.nmiet.app.domain.model.ContentItem) = withContext(ioDispatcher) {
+        _contentItems.update { list ->
+            list.map { if (it.id == item.id) item else it }
+        }
+    }
+
+    override suspend fun importPackFromZip(
+        zipFile: java.io.File,
+        outputDir: java.io.File
+    ): Result<LearningPack> = withContext(ioDispatcher) {
+        try {
+            val result = com.nmiet.app.data.local.ZipPackManager.extractAndVerifyPack(zipFile, outputDir)
+            if (!result.isChecksumValid) {
+                return@withContext Result.failure(SecurityException("SHA-256 verification failed for pack ${zipFile.name}"))
+            }
+            saveIncomingLearningPack(result.pack, "Imported ZIP Archive")
+            Result.success(result.pack)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- Personalized Study Planner & Revision ---
+    private val _studyPlan = MutableStateFlow(
+        com.nmiet.app.domain.model.StudyPlan(
+            planId = "study_plan_primary",
+            targetClass = 9,
+            weeklyGoalHours = 6,
+            tasks = listOf(
+                com.nmiet.app.domain.model.StudyTask(
+                    id = "task_01",
+                    topicId = "relaynet_class9_science_photosynthesis_v1",
+                    topicTitle = "Revise Water Photolysis & Light Reactions",
+                    subject = "Science (Biology)",
+                    scheduledDate = System.currentTimeMillis(),
+                    isCompleted = false,
+                    reason = "Weak concept identified in diagnostic quiz attempt (accuracy < 60%)",
+                    estimatedMinutes = 15
+                ),
+                com.nmiet.app.domain.model.StudyTask(
+                    id = "task_02",
+                    topicId = "relaynet_class9_science_photosynthesis_v1",
+                    topicTitle = "Practice RuBisCO & Dark Reaction Formulas",
+                    subject = "Science (Biology)",
+                    scheduledDate = System.currentTimeMillis() + 86400000L,
+                    isCompleted = false,
+                    reason = "Spaced repetition revision cycle: Interval 1",
+                    estimatedMinutes = 20
+                ),
+                com.nmiet.app.domain.model.StudyTask(
+                    id = "task_03",
+                    topicId = "relaynet_class9_science_photosynthesis_v1",
+                    topicTitle = "Complete 5-Question Mastery Checkup",
+                    subject = "Science (Biology)",
+                    scheduledDate = System.currentTimeMillis() + (86400000L * 3),
+                    isCompleted = false,
+                    reason = "Mastery elevation check to reach Strong Tier (>85%)",
+                    estimatedMinutes = 10
+                )
+            )
+        )
+    )
+
+    override fun getStudyPlanFlow(): Flow<com.nmiet.app.domain.model.StudyPlan> =
+        _studyPlan.asStateFlow()
+
+    override suspend fun toggleStudyTaskCompleted(taskId: String, isCompleted: Boolean) = withContext(ioDispatcher) {
+        _studyPlan.update { plan ->
+            plan.copy(
+                tasks = plan.tasks.map { task ->
+                    if (task.id == taskId) task.copy(isCompleted = isCompleted) else task
+                }
+            )
+        }
+    }
+
+    override suspend fun addStudyTask(task: com.nmiet.app.domain.model.StudyTask) = withContext(ioDispatcher) {
+        _studyPlan.update { plan ->
+            plan.copy(tasks = plan.tasks + task)
+        }
+    }
+
+    // --- Optional SLM Catalogue ---
+    private val _aiModels = MutableStateFlow<List<com.nmiet.app.domain.model.AIModelInfo>>(
+        listOf(
+            com.nmiet.app.domain.model.AIModelInfo(
+                id = "model_gemma_2b_it_q4",
+                name = "Gemma-2-2B Odia/English IT",
+                description = "Google DeepMind Gemma 2B quantised for mobile CPU offline tutoring. Optimized for Indian secondary curriculum.",
+                format = "GGUF Q4_K_M (LiteRT/MediaPipe)",
+                sizeBytes = 1_450_000_000L, // 1.45 GB
+                minRamBytes = 3_200_000_000L, // 3.2 GB RAM
+                supportedLanguages = listOf("Odia", "English", "Hindi"),
+                license = "Gemma Open Terms",
+                version = "2.1",
+                downloadUrl = "https://models.relaynet.org/gemma-2b-odia-q4.gguf",
+                sha256Checksum = "4a123f890b...",
+                isDownloaded = false,
+                isActive = false
+            ),
+            com.nmiet.app.domain.model.AIModelInfo(
+                id = "model_qwen2_0_5b_instruct",
+                name = "Qwen2.5-0.5B Multilingual Ultra-Light",
+                description = "Ultra-compact 500M parameter model for devices with 2GB–3GB RAM. Fast inference for basic concept definitions.",
+                format = "GGUF Q4_0",
+                sizeBytes = 380_000_000L, // 380 MB
+                minRamBytes = 1_500_000_000L, // 1.5 GB RAM
+                supportedLanguages = listOf("English", "Hindi", "Bengali", "Tamil", "Telugu"),
+                license = "Apache 2.0",
+                version = "2.5",
+                downloadUrl = "https://models.relaynet.org/qwen2.5-0.5b-q4.gguf",
+                sha256Checksum = "7b233a...",
+                isDownloaded = false,
+                isActive = false
+            )
+        )
+    )
+
+    override fun getAIModelsFlow(): Flow<List<com.nmiet.app.domain.model.AIModelInfo>> =
+        _aiModels.asStateFlow()
+
+    override suspend fun setActiveAIModel(modelId: String?) = withContext(ioDispatcher) {
+        _aiModels.update { list ->
+            list.map { model ->
+                model.copy(isActive = (model.id == modelId))
+            }
+        }
+    }
 }
