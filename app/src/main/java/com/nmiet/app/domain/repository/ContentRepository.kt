@@ -51,6 +51,11 @@ interface ContentRepository {
     suspend fun resetToPilotDemoPacks()
     fun setSimulatedNetworkOnline(isOnline: Boolean)
 
+    suspend fun loginWithEmail(email: String, password: String): Result<LearnerProfile>
+    suspend fun registerWithEmail(name: String, email: String, password: String, classGrade: Int, board: com.nmiet.app.domain.model.Board): Result<LearnerProfile>
+    suspend fun loginWithGoogle(idToken: String?, email: String, name: String, avatarUrl: String?): Result<LearnerProfile>
+    suspend fun logout()
+
     fun getAllGeneratedNotesFlow(): Flow<List<com.nmiet.app.domain.model.GeneratedNote>>
     suspend fun saveGeneratedNote(note: com.nmiet.app.domain.model.GeneratedNote)
     suspend fun toggleNoteBookmark(noteId: String, isBookmarked: Boolean)
