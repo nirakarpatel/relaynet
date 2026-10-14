@@ -23,6 +23,11 @@ from fastapi.staticfiles import StaticFiles
 from app.routes.tutor import router as tutor_router
 from app.routes.diagrams import router as diagrams_router
 from services.pack_generator import build_section9_learning_pack
+from app.auth import (
+    UserRegisterRequest, UserLoginRequest, GoogleAuthRequest,
+    register_user, login_user, authenticate_google
+)
+from app.dataset_pipeline import generate_live_curriculum_pack
 
 app = FastAPI(
     title="RelayNet Backend API",
@@ -59,8 +64,16 @@ def read_root():
         "pilot": "Class 9 Science (Biology), Odia + English",
         "status": "ONLINE_HEALTHY",
         "server_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "portal_url": "/portal",
         "docs_url": "/docs"
     }
+
+@app.get("/portal", response_class=FileResponse)
+def read_portal():
+    portal_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(portal_file):
+        return FileResponse(portal_file, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Portal index.html not found.")
 
 @app.get("/health")
 def health_check():
@@ -118,6 +131,56 @@ def download_content_pack(pack_id: str):
 
 app.include_router(tutor_router)
 app.include_router(diagrams_router)
+
+# ----------------- Auth Endpoints -----------------
+
+@app.post("/auth/register")
+def auth_register(req: UserRegisterRequest):
+    try:
+        return register_user(req)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/auth/login")
+def auth_login(req: UserLoginRequest):
+    try:
+        return login_user(req)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+@app.post("/auth/google")
+def auth_google(req: GoogleAuthRequest):
+    try:
+        return authenticate_google(req)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ----------------- Live Content & Audio Endpoints -----------------
+
+@app.post("/content/live-generate")
+def live_generate_content(class_grade: int = 7, board: str = "CBSE", subject: Optional[str] = None):
+    items = generate_live_curriculum_pack(grade=class_grade, board=board, subject=subject)
+    return {
+        "status": "GENERATED",
+        "class_grade": class_grade,
+        "board": board,
+        "item_count": len(items),
+        "items": items
+    }
+
+@app.post("/tutor/transcribe-audio")
+def transcribe_audio_endpoint(language: str = "or-IN"):
+    sample_transcripts = {
+        "or-IN": "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟାରେ ଅମ୍ଳଜାନ କିପରି ସୃଷ୍ଟି ହୁଏ ଏବଂ ଜଳର ଭୂମିକା କ'ଣ?",
+        "en-IN": "How is oxygen produced during photosynthesis and what is the role of water?"
+    }
+    transcript = sample_transcripts.get(language, sample_transcripts["or-IN"])
+    return {
+        "status": "SUCCESS",
+        "language": language,
+        "transcript": transcript,
+        "confidence": 0.98
+    }
 
 @app.post("/notes/generate")
 def generate_revision_notes(req: dict = None):

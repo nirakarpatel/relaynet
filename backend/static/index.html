@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RelayNet - Offline-First Multilingual AI Learning</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Oriya:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Firebase JS SDK (Module Configuration) -->
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-analytics.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4NHj-TH6eBZDiCff8AglliOfUuzE4PRg",
+      authDomain: "relaynet-001.firebaseapp.com",
+      projectId: "relaynet-001",
+      storageBucket: "relaynet-001.firebasestorage.app",
+      messagingSenderId: "752084871127",
+      appId: "1:752084871127:web:ac9a252a138a76796f8d92",
+      measurementId: "G-WTC3KN78BD"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+
+    // Expose for web application telemetry and debugging
+    window.firebaseApp = app;
+    window.firebaseAnalytics = analytics;
+    console.log("🔥 Firebase initialized successfully for relaynet-001 with Analytics:", analytics);
+  </script>
+
+  <style>
+    :root {
+      --bg-primary: #0F172A;
+      --bg-secondary: #1E293B;
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --card-border: rgba(148, 163, 184, 0.15);
+      --accent: #38BDF8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --accent-green: #34D399;
+      --accent-orange: #FB923C;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-odia: 'Noto Sans Oriya', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(52, 211, 153, 0.08) 0px, transparent 50%);
+    }
+
+    header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--card-border);
+      backdrop-filter: blur(12px);
+      background: rgba(15, 23, 42, 0.85);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284C7, #38BDF8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .hero {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto 1.5rem auto;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(to right, #F8FAFC, #38BDF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(8px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #F1F5F9;
+    }
+
+    .pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+    }
+
+    .lesson-title-odia {
+      font-family: var(--font-odia);
+      font-size: 1.1rem;
+      margin-top: 0.25rem;
+      color: #E2E8F0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      margin-top: 1rem;
+    }
+
+    .btn-primary {
+      background: #0284C7;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369A1;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+
+    .btn-outline:hover {
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .code-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #CBD5E1;
+      margin-top: 0.75rem;
+      overflow-x: auto;
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      background: rgba(15, 23, 42, 0.8);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📡</div>
+      <div>
+        <div class="brand-title">RelayNet</div>
+      </div>
+    </div>
+    <div class="badge-status">
+      <span class="status-dot"></span>
+      Firebase Analytics Active • relaynet-001
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Multilingual, Offline-First Learning Mesh</h1>
+      <p>High-yield bilingual curricula (Odia & English), AI tutor reasoning, and secure P2P mesh transfer for Classes 6–10 across BSE Odisha, CBSE & ICSE.</p>
+    </div>
+
+    <div class="grid-cards">
+      <!-- Card 1: Curriculum Catalog -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📚 Curriculum Catalogue</span>
+          <span class="pill">Section 4 Verified</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Classes 6–10 multi-board syllabus covering Science, Mathematics, and Life Sciences with Odia and English translations.</p>
+        <div class="lesson-title-odia">ନବମ ଶ୍ରେଣୀ: ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା</div>
+        <a href="/curriculum" target="_blank" class="btn btn-outline">Explore Curriculum API</a>
+      </div>
+
+      <!-- Card 2: Offline Pack Download -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📦 Section 9 Learning Packs</span>
+          <span class="pill">Offline Bundle</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Cryptographically verified (SHA-256) compressed ZIP learning packs with path traversal and zip-bomb protection.</p>
+        <a href="/content-packs/odisha_c9_sci_photosynthesis/download" class="btn btn-primary">Download Pilot Pack (.zip)</a>
+      </div>
+
+      <!-- Card 3: AI Tutor API -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🤖 Multilingual AI Tutor</span>
+          <span class="pill">Odia + English</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Guardrailed conversational tutor answering questions grounded in curriculum with live transcription support.</p>
+        <div class="code-box">POST /tutor/ask<br/>Content-Type: application/json</div>
+        <a href="/docs" target="_blank" class="btn btn-outline">Open Interactive Swagger</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    RelayNet Project • Firebase Auth & Analytics connected to <code>relaynet-001</code> • Powered by FastAPI & Jetpack Compose
+  </footer>
+
+</body>
+</html>

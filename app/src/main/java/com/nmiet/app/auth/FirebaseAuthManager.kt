@@ -9,6 +9,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -35,9 +36,30 @@ object FirebaseAuthManager {
 
     private const val TAG = "FirebaseAuthManager"
 
+    /**
+     * Initializes FirebaseApp with relaynet-001 project credentials if not already initialized.
+     */
+    fun initialize(context: Context) {
+        try {
+            if (FirebaseApp.getApps(context).isEmpty()) {
+                val options = FirebaseOptions.Builder()
+                    .setApiKey("AIzaSyA4NHj-TH6eBZDiCff8AglliOfUuzE4PRg")
+                    .setApplicationId("1:752084871127:android:ac9a252a138a76796f8d92")
+                    .setProjectId("relaynet-001")
+                    .setStorageBucket("relaynet-001.firebasestorage.app")
+                    .setGcmSenderId("752084871127")
+                    .build()
+                FirebaseApp.initializeApp(context.applicationContext, options)
+                Log.i(TAG, "FirebaseApp successfully initialized for project relaynet-001")
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Firebase programmatic initialization failed: ${e.message}")
+        }
+    }
+
     val isFirebaseAvailable: Boolean
         get() = try {
-            FirebaseApp.getApps(FirebaseAuth.getInstance().app.applicationContext).isNotEmpty()
+            getFirebaseAuth() != null
         } catch (_: Throwable) {
             false
         }

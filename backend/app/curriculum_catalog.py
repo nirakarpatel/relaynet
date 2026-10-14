@@ -79,8 +79,82 @@ CURRICULUM_CATALOG: List[CurriculumNode] = [
         supported_languages=["ENGLISH", "ODIA"],
         has_offline_pack=True,
         content_version="v1.0.0"
+    ),
+    # Additional Classes 6-8 nodes for rich multi-board coverage
+    CurriculumNode(
+        id="odisha_c6_sci_food",
+        board=BoardType.ODISHA_STATE,
+        class_grade=6,
+        subject="Science",
+        unit_chapter="Chapter 1: ଆମ ଖାଦ୍ୟ (Our Food)",
+        topic="ଖାଦ୍ୟର ଉତ୍ସ ଏବଂ ପୋଷକ ତତ୍ତ୍ଵ (Sources of Food & Nutrients)",
+        learning_objective="Understand dietary components, carbohydrates, proteins, vitamins, and minerals.",
+        supported_languages=["ODIA", "ENGLISH"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
+    ),
+    CurriculumNode(
+        id="odisha_c7_sci_nutrition_plants",
+        board=BoardType.ODISHA_STATE,
+        class_grade=7,
+        subject="Science",
+        unit_chapter="Chapter 1: ଉଦ୍ଭିଦରେ ପୋଷଣ (Nutrition in Plants)",
+        topic="ସ୍ୱୟଂପୋଷୀ ଏବଂ ପରପୋଷୀ ପୋଷଣ (Autotrophic & Heterotrophic Nutrition)",
+        learning_objective="Study saprophytic, parasitic, and symbiotic modes of nutrition in flora.",
+        supported_languages=["ODIA", "ENGLISH"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
+    ),
+    CurriculumNode(
+        id="odisha_c8_sci_microorganisms",
+        board=BoardType.ODISHA_STATE,
+        class_grade=8,
+        subject="Science",
+        unit_chapter="Chapter 2: ଅଣୁଜୀବ: ବନ୍ଧୁ ଓ ଶତ୍ରୁ (Microorganisms)",
+        topic="ଅଣୁଜୀବଙ୍କ ଶ୍ରେଣୀବିଭାଗ ଏବଂ ଉପଯୋଗିତା (Classification of Microbes)",
+        learning_objective="Examine bacteria, fungi, algae, protozoa, and their agricultural/medical roles.",
+        supported_languages=["ODIA", "ENGLISH"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
+    ),
+    CurriculumNode(
+        id="cbse_c6_sci_components_food",
+        board=BoardType.CBSE,
+        class_grade=6,
+        subject="Science",
+        unit_chapter="Chapter 2: Components of Food",
+        topic="Balanced Diet and Deficiency Diseases",
+        learning_objective="Identify major nutrient groups, balanced diets, and prevent nutritional deficiencies.",
+        supported_languages=["ENGLISH", "ODIA"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
+    ),
+    CurriculumNode(
+        id="cbse_c7_sci_nutrition_plants",
+        board=BoardType.CBSE,
+        class_grade=7,
+        subject="Science",
+        unit_chapter="Chapter 1: Nutrition in Plants",
+        topic="Mode of Nutrition in Plants and Photosynthesis",
+        learning_objective="Analyze how green plants produce simple carbohydrates and utilize chlorophyll.",
+        supported_languages=["ENGLISH", "ODIA"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
+    ),
+    CurriculumNode(
+        id="cbse_c8_sci_crop_production",
+        board=BoardType.CBSE,
+        class_grade=8,
+        subject="Science",
+        unit_chapter="Chapter 1: Crop Production and Management",
+        topic="Agricultural Practices and Irrigation",
+        learning_objective="Learn sowing, soil preparation, modern irrigation, and storage techniques.",
+        supported_languages=["ENGLISH", "ODIA"],
+        has_offline_pack=True,
+        content_version="v1.0.0"
     )
 ]
+
 
 PILOT_LESSON_CONTENT = LessonContent(
     title_odia="ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା ଏବଂ ଉଦ୍ଭିଦ ପୋଷଣ",

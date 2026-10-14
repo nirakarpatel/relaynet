@@ -28,6 +28,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 0. Initialize Firebase (relaynet-001)
+        com.nmiet.app.auth.FirebaseAuthManager.initialize(applicationContext)
+
         // 1. Initialize SQLite Database & Learning DAO
         val database = AppDatabase.getInstance(applicationContext)
         val learningDao = database.learningDao()

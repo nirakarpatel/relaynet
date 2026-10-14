@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "752084871127",
+    "project_id": "relaynet-001",
+    "storage_bucket": "relaynet-001.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:752084871127:android:ac9a252a138a76796f8d92",
+        "android_client_info": {
+          "package_name": "com.nmiet.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4NHj-TH6eBZDiCff8AglliOfUuzE4PRg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
