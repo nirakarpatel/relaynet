@@ -92,7 +92,9 @@ fun AppNavHost(
     val isFullScreen = currentRoute?.startsWith("lesson") == true ||
             currentRoute?.startsWith("quiz") == true ||
             currentRoute?.startsWith("notes") == true ||
-            currentRoute?.startsWith("custom_quiz") == true
+            currentRoute?.startsWith("custom_quiz") == true ||
+            currentRoute == Routes.LOGIN ||
+            currentRoute == Routes.PROFILE_COMPLETION
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -370,6 +372,52 @@ fun AppNavHost(
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                        }
+                    )
+                }
+
+                // Authentication & Profile Completion Screens
+                composable(Routes.LOGIN) {
+                    val authViewModel: com.nmiet.app.ui.screens.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        com.nmiet.app.ui.screens.auth.AuthViewModel(repository)
+                    }
+                    com.nmiet.app.ui.screens.auth.LoginScreen(
+                        viewModel = authViewModel,
+                        onNavigateToHome = {
+                            navController.navigate(Routes.CURRICULUM) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToProfileCompletion = {
+                            navController.navigate(Routes.PROFILE_COMPLETION) {
+                                launchSingleTop = true
+                            }
+                        },
+                        onBackClick = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                composable(Routes.PROFILE_COMPLETION) {
+                    val authViewModel: com.nmiet.app.ui.screens.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        com.nmiet.app.ui.screens.auth.AuthViewModel(repository)
+                    }
+                    com.nmiet.app.ui.screens.auth.ProfileCompletionScreen(
+                        viewModel = authViewModel,
+                        onProfileCompleted = {
+                            navController.navigate(Routes.CURRICULUM) {
+                                popUpTo(Routes.LOGIN) {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+                        onBackClick = {
+                            navController.popBackStack()
                         }
                     )
                 }
