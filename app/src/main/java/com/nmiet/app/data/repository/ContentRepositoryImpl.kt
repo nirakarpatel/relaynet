@@ -457,8 +457,9 @@ class ContentRepositoryImpl(
             TutorMessageEntity(
                 messageId = "msg_welcome",
                 senderName = TutorSender.TUTOR.name,
-                textOdia = "ନମସ୍କାର ସୌମ୍ୟ! ମୁଁ ତୁମର RelayNet AI ଶିକ୍ଷକ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ ବିଷୟରେ ଯେକୌଣସି ପ୍ରଶ୍ନ ଓଡ଼ିଆ କିମ୍ବା ଇଂରାଜୀରେ ପଚାରିପାରିବ। ଆପଣ ପାଠ୍ୟପୁସ୍ତକର ଫଟୋ (Camera/Gallery) ମଧ୍ୟ ପଠାଇପାରିବେ!",
-                textEnglish = "Hello Soumya! I am your RelayNet AI Tutor. Ask any question from Class 9 Science in Odia or English. You can also attach textbook photos (Camera/Gallery) to solve problems!",
+                textOdia = "ନମସ୍କାର ସୌମ୍ୟ! ମୁଁ ତୁମର RelayNet AI ଶିକ୍ଷକ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ ବିଷୟରେ ଯେକୌଣସି ପ୍ରଶ୍ନ ଓଡ଼ିଆରେ ପଚାରିପାରିବେ। ଆପଣ ପାଠ୍ୟପୁସ୍ତକର ଫଟୋ (Camera/Gallery) ମଧ୍ୟ ପଠାଇପାରିବେ!",
+                textEnglish = "Hello Soumya! I am your RelayNet AI Tutor. Ask any question from Class 9 Science in English. You can also attach textbook photos to solve problems!",
+                textHindi = "नमस्ते सौम्या! मैं आपका RelayNet AI शिक्षक हूँ। कक्षा 9 विज्ञान से संबंधित कोई भी प्रश्न हिंदी में पूछें। आप प्रश्नों को हल करने के लिए पाठ्यपुस्तक की फोटो भी भेज सकते हैं!",
                 timestamp = System.currentTimeMillis(),
                 isOfflineGrounded = true,
                 sourceChapter = "Odisha Board Class 9 Science",
