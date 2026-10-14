@@ -8,3 +8,6 @@ gemini.key2=YOUR_GEMINI_KEY_2
 gemini.key3=YOUR_GEMINI_KEY_3
 gemini.key4=YOUR_GEMINI_KEY_4
 gemini.key5=YOUR_GEMINI_KEY_5
+
+# NVIDIA NIM API Key (Keep your actual key private in local.properties)
+nvidia.api.key=YOUR_NVIDIA_API_KEY

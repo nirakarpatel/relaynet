@@ -27,6 +27,7 @@ if (geminiKeyList.isEmpty()) {
     }
 }
 val geminiKeys = geminiKeyList.joinToString(",")
+val nvidiaApiKey = localProperties.getProperty("nvidia.api.key", "")?.trim() ?: ""
 
 android {
     namespace = "com.nmiet.app"
@@ -44,6 +45,7 @@ android {
         versionName = "1.0.0"
 
         buildConfigField("String", "GEMINI_KEYS", "\"$geminiKeys\"")
+        buildConfigField("String", "NVIDIA_API_KEY", "\"$nvidiaApiKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
