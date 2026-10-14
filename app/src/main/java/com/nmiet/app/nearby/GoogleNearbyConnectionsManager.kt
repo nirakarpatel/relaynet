@@ -20,6 +20,7 @@ import com.google.android.gms.nearby.connection.Strategy
 import com.nmiet.app.data.local.ZipPackManager
 import com.nmiet.app.domain.model.ContentManifestItem
 import com.nmiet.app.domain.model.ContentMediaType
+import com.nmiet.app.domain.model.GeneratedNote
 import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerContentManifest
 import com.nmiet.app.domain.model.PeerDevice
@@ -61,6 +62,12 @@ class GoogleNearbyConnectionsManager(
     private val _transferState = MutableStateFlow<TransferState>(TransferState.Idle)
     override val transferState: StateFlow<TransferState> = _transferState.asStateFlow()
 
+    private val _isScanning = MutableStateFlow(false)
+    override val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
+    private val _discoveredPeers = MutableStateFlow<List<PeerDevice>>(emptyList())
+    override val discoveredPeers: StateFlow<List<PeerDevice>> = _discoveredPeers.asStateFlow()
+
     private val discoveredEndpoints = mutableMapOf<String, PeerDevice>()
     private var connectedEndpointId: String? = null
     private var pendingAuthPeer: PeerDevice? = null
@@ -100,6 +107,8 @@ class GoogleNearbyConnectionsManager(
         // Clean up previous sessions before initiating discovery/advertising
         stopScanning()
         discoveredEndpoints.clear()
+        _discoveredPeers.value = emptyList()
+        _isScanning.value = true
         _transferState.value = TransferState.Scanning(emptyList())
 
         // Start both Advertising (so other peers discover this device) and Discovery
@@ -129,6 +138,7 @@ class GoogleNearbyConnectionsManager(
             endpointDiscoveryCallback,
             discoveryOptions
         ).addOnFailureListener { e ->
+            _isScanning.value = false
             _transferState.value = TransferState.Error(
                 "Failed to start Nearby Discovery: ${e.localizedMessage ?: "Unknown error"}",
                 canRetry = true
@@ -137,6 +147,7 @@ class GoogleNearbyConnectionsManager(
     }
 
     override fun stopScanning() {
+        _isScanning.value = false
         try {
             connectionsClient.stopDiscovery()
             connectionsClient.stopAdvertising()
@@ -154,12 +165,16 @@ class GoogleNearbyConnectionsManager(
                 signalStrengthRssi = -55
             )
             discoveredEndpoints[endpointId] = peer
-            _transferState.value = TransferState.Scanning(discoveredEndpoints.values.toList())
+            val peerList = discoveredEndpoints.values.toList()
+            _discoveredPeers.value = peerList
+            _transferState.value = TransferState.Scanning(peerList)
         }
 
         override fun onEndpointLost(endpointId: String) {
             discoveredEndpoints.remove(endpointId)
-            _transferState.value = TransferState.Scanning(discoveredEndpoints.values.toList())
+            val peerList = discoveredEndpoints.values.toList()
+            _discoveredPeers.value = peerList
+            _transferState.value = TransferState.Scanning(peerList)
         }
     }
 
@@ -445,6 +460,14 @@ class GoogleNearbyConnectionsManager(
         }
     }
 
+    override fun sendNoteToPeer(peer: PeerDevice, note: GeneratedNote) {
+        // Broadcast / send generated note via Nearby connections payload
+    }
+
+    override fun requestPackFromPeer(peer: PeerDevice, packId: String) {
+        // Request pack via Nearby connections payload
+    }
+
     override fun cancelTransfer() {
         connectedEndpointId?.let { connectionsClient.disconnectFromEndpoint(it) }
         connectedEndpointId = null
@@ -452,6 +475,8 @@ class GoogleNearbyConnectionsManager(
         incomingFilePayloads.clear()
         outgoingFilePayloads.clear()
         stopScanning()
+        discoveredEndpoints.clear()
+        _discoveredPeers.value = emptyList()
         try {
             connectionsClient.stopAllEndpoints()
         } catch (_: Exception) {}

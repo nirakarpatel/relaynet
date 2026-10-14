@@ -226,12 +226,11 @@ class RelayNetUnitTest {
     @Test
     fun regionalLanguageExpansion_containsAllTargetLanguages() {
         val languages = com.nmiet.app.domain.model.AppLanguage.entries.map { it.name }
-        assertTrue(languages.contains("ODIA"))
-        assertTrue(languages.contains("ENGLISH"))
-        assertTrue(languages.contains("HINDI"))
-        assertTrue(languages.contains("BENGALI"))
-        assertTrue(languages.contains("TAMIL"))
-        assertTrue(languages.contains("TELUGU"))
+        assertTrue(languages.contains("ENGLISH_ONLY"))
+        assertTrue(languages.contains("ODIA_ONLY"))
+        assertTrue(languages.contains("HINDI_ONLY"))
+        assertTrue(languages.contains("BILINGUAL_EN_HI"))
+        assertTrue(languages.contains("BILINGUAL_EN_OR"))
     }
 
     @Test

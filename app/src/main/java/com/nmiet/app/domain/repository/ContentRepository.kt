@@ -76,4 +76,8 @@ interface ContentRepository {
     // Optional SLM Catalogue
     fun getAIModelsFlow(): Flow<List<com.nmiet.app.domain.model.AIModelInfo>>
     suspend fun setActiveAIModel(modelId: String?)
+
+    // Cloud / NVIDIA AI API Key management
+    fun setApiKey(key: String)
+    fun getApiKey(): String
 }
