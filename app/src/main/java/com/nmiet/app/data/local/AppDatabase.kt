@@ -11,9 +11,10 @@ import androidx.room.RoomDatabase
         LearningPackEntity::class,
         QuizAttemptEntity::class,
         TopicMasteryEntity::class,
-        TutorMessageEntity::class
+        TutorMessageEntity::class,
+        GeneratedNoteEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

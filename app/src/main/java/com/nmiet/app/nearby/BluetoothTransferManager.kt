@@ -175,7 +175,7 @@ class BluetoothTransferManager(
                     put("equationOrFormula", entity.equationOrFormula ?: "")
                     put("sectionsJson", entity.sectionsJson)
                     put("quizQuestionsJson", entity.quizQuestionsJson)
-                    put("sha256Hash", entity.sha256Hash)
+                    put("sha256Hash", entity.sha256Checksum)
                     put("sourceAttribution", entity.sourceAttribution)
                 }
 
@@ -255,16 +255,20 @@ class BluetoothTransferManager(
 
                 val entity = LearningPackEntity(
                     packId = json.getString("packId"),
-                    title = json.optString("title", titleEng),
-                    board = json.optString("board", json.optString("boardName", "ODISHA_STATE")),
-                    grade = if (json.has("grade")) json.getInt("grade") else json.optInt("classGrade", 9),
-                    odiaContentJson = json.optString("odiaContentJson", json.optString("lessonSummaryOdia", "")),
-                    englishContentJson = json.optString("englishContentJson", json.optString("lessonSummaryEnglish", "")),
-                    sha256Hash = json.optString("sha256Hash", json.optString("checksumSha256", "")),
-                    isCached = true,
-                    titleOdia = json.optString("titleOdia", ""),
+                    titleOdia = json.optString("titleOdia", "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)"),
                     titleEnglish = titleEng,
                     subject = json.optString("subject", "Science (ବିଜ୍ଞାନ)"),
+                    chapterNumber = json.optInt("chapterNumber", 4),
+                    origin = com.nmiet.app.domain.model.ContentOrigin.P2P_RECEIVED,
+                    senderPeerName = peerName,
+                    receivedTimestamp = System.currentTimeMillis(),
+                    sha256Checksum = json.optString("sha256Hash", json.optString("checksumSha256", "")),
+                    isCachedLocally = true,
+                    board = json.optString("board", json.optString("boardName", "ODISHA_STATE")),
+                    grade = if (json.has("grade")) json.getInt("grade") else json.optInt("classGrade", 9),
+                    title = titleEng,
+                    odiaContentJson = json.optString("odiaContentJson", json.optString("lessonSummaryOdia", "")),
+                    englishContentJson = json.optString("englishContentJson", json.optString("lessonSummaryEnglish", "")),
                     chapterOdia = json.optString("chapterOdia", ""),
                     chapterEnglish = json.optString("chapterEnglish", ""),
                     topicOdia = json.optString("topicOdia", ""),
@@ -272,8 +276,6 @@ class BluetoothTransferManager(
                     equationOrFormula = if (json.optString("equationOrFormula").isEmpty()) null else json.getString("equationOrFormula"),
                     sectionsJson = json.optString("sectionsJson", "[]"),
                     quizQuestionsJson = json.optString("quizQuestionsJson", "[]"),
-                    isReceivedViaMesh = true,
-                    peerSenderName = peerName,
                     sourceAttribution = json.optString("sourceAttribution", "Odisha State Board (BSE)")
                 )
 

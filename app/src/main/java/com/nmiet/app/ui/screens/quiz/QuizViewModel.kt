@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 
 class QuizViewModel(
     private val repository: ContentRepository,
-    val packId: String
+    val packId: String,
+    val topicTag: String? = null
 ) : ViewModel() {
 
     private val _learningPack = MutableStateFlow<LearningPack?>(null)
@@ -40,12 +41,71 @@ class QuizViewModel(
     private val _isQuizFinished = MutableStateFlow(false)
     val isQuizFinished: StateFlow<Boolean> = _isQuizFinished.asStateFlow()
 
+    val isTargetedTopicQuiz: Boolean = !topicTag.isNullOrBlank()
+
     init {
         viewModelScope.launch {
-            repository.getLearningPackByIdFlow(packId).collect { pack ->
-                _learningPack.value = pack
+            repository.getLearningPackByIdFlow(packId).collect { rawPack ->
+                if (rawPack != null) {
+                    val pack = if (!topicTag.isNullOrBlank()) {
+                        val targetedQuestions = buildTargetedQuestions(rawPack.quizQuestions, topicTag)
+                        rawPack.copy(
+                            titleEnglish = "${rawPack.titleEnglish} • Targeted: $topicTag",
+                            quizQuestions = targetedQuestions
+                        )
+                    } else {
+                        rawPack
+                    }
+                    _learningPack.value = pack
+                }
             }
         }
+    }
+
+    private fun buildTargetedQuestions(original: List<QuizQuestion>, tag: String): List<QuizQuestion> {
+        val matches = original.filter {
+            it.conceptTag.contains("photolysis", ignoreCase = true) ||
+            it.conceptTag.contains("chloroplast", ignoreCase = true) ||
+            it.questionEnglish.contains("photolysis", ignoreCase = true) ||
+            it.questionEnglish.contains("light", ignoreCase = true) ||
+            it.conceptTag.equals(tag, ignoreCase = true)
+        }
+        val result = matches.toMutableList()
+        // Ensure 3 isolated questions for targeted diagnostic practice
+        if (result.size < 3) {
+            val supplemental = listOf(
+                QuizQuestion(
+                    id = "q_targeted_photolysis_eq",
+                    questionOdia = "ଫୋଟୋଲିସିସ୍ (Water photolysis) ପ୍ରକ୍ରିୟାରେ ନିମ୍ନଲିଖିତ ମଧ୍ୟରୁ କେଉଁଟି ସଠିକ୍ ରାସାୟନିକ ବିଭାଜନ?",
+                    questionEnglish = "Which of the following correctly represents the photolysis of water in light reactions?",
+                    optionsOdia = listOf(
+                        "A) CO₂ + H₂O ──> Glucose",
+                        "B) 2H₂O ──[Light/Chlorophyll]──> 4H⁺ + 4e⁻ + O₂↑",
+                        "C) O₂ + 4e⁻ ──> 2H₂O",
+                        "D) Glucose ──> Pyruvate + Energy"
+                    ),
+                    optionsEnglish = listOf(
+                        "A) CO₂ + H₂O ──> Glucose",
+                        "B) 2H₂O ──[Light/Chlorophyll]──> 4H⁺ + 4e⁻ + O₂↑",
+                        "C) O₂ + 4e⁻ ──> 2H₂O",
+                        "D) Glucose ──> Pyruvate + Energy"
+                    ),
+                    correctIndex = 1,
+                    explanationOdia = "ସୌରଶକ୍ତି ଉପସ୍ଥିତିରେ ଜଳ ଅଣୁ ବିଭାଜିତ ହୋଇ ପ୍ରୋଟନ୍ (H⁺), ଇଲେକ୍ଟ୍ରନ୍ (e⁻) ଏବଂ ଅମ୍ଳଜାନ (O₂) ଗ୍ୟାସ୍ ପ୍ରଦାନ କରେ।",
+                    explanationEnglish = "Water splitting photolysis under radiant light generates protons, electrons, and by-product oxygen gas.",
+                    conceptTag = "PHOTOLYSIS_WATER",
+                    misconceptionHintOdia = "⚠️ Water is oxidized and split into protons, electrons, and O₂.",
+                    misconceptionHintEnglish = "⚠️ Water is oxidized and split into protons, electrons, and O₂."
+                )
+            )
+            for (q in supplemental) {
+                if (result.none { it.id == q.id }) {
+                    result.add(q)
+                }
+                if (result.size >= 3) break
+            }
+        }
+        return result.take(3)
     }
 
     fun setLanguage(lang: AppLanguage) {
@@ -94,8 +154,8 @@ class QuizViewModel(
 
         viewModelScope.launch {
             repository.submitQuizAttempt(
-                topicId = pack.packId,
-                topicName = pack.titleEnglish,
+                topicId = packId,
+                topicName = if (isTargetedTopicQuiz) "Targeted: Photolysis & Light Reactions" else pack.titleEnglish,
                 scorePercent = scorePercent,
                 correctCount = _correctCount.value,
                 totalCount = total,
