@@ -96,19 +96,26 @@ class ContentPackSummary(BaseModel):
     download_url: str
 
 class TutorAskRequest(BaseModel):
+    query: Optional[str] = None
+    question: Optional[str] = None
+    image_base64: Optional[str] = None
+    curriculum_context: str = "Class 9 Science - Photosynthesis"
+    language: str = "odia"
     learner_id: str = "learner_001"
     class_grade: int = 9
     board: BoardType = BoardType.ODISHA_STATE
     subject: str = "Science (Biology)"
     topic: str = "Photosynthesis"
-    question: str
     preferred_language: Language = Language.BILINGUAL
 
 class TutorAskResponse(BaseModel):
-    answer_odia: str
-    answer_english: str
-    grounding_source: str
-    is_offline_grounded: bool
+    reply: str
+    source_tags: List[str] = Field(default_factory=list)
+    is_study_related: bool = True
+    answer_odia: Optional[str] = None
+    answer_english: Optional[str] = None
+    grounding_source: str = "Odisha Board & CBSE Class 9 Science: Nutrition in Plants"
+    is_offline_grounded: bool = False
     recommended_quiz_id: Optional[str] = None
 
 class QuizAttemptSubmission(BaseModel):

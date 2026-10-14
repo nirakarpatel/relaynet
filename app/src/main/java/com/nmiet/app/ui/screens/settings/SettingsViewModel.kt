@@ -85,6 +85,10 @@ class SettingsViewModel(
         }
     }
 
+    fun syncPendingAttempts() {
+        triggerCloudSync()
+    }
+
     fun resetToDemoCatalog() {
         viewModelScope.launch {
             repository.resetToPilotDemoPacks()

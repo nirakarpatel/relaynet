@@ -267,7 +267,9 @@ object PilotCurriculumCatalog {
     fun getOfflineTutorResponse(question: String): Pair<String, String> {
         val qLower = question.lowercase()
         return when {
-            qLower.contains("photosynthesis") || qLower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") || qLower.contains("କଣ") || qLower.contains("explain") || qLower.contains("ବୁଝାନ୍ତୁ") -> {
+            qLower.contains("photosynthesis") || qLower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") || qLower.contains("କଣ") ||
+            qLower.contains("explain") || qLower.contains("ବୁଝାନ୍ତୁ") || qLower.contains("formula") ||
+            qLower.contains("equation") || qLower.contains("ସମୀକରଣ") -> {
                 Pair(
                     "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ସବୁଜ ଉଦ୍ଭିଦଙ୍କର ଖାଦ୍ୟ ପ୍ରସ୍ତୁତି ପ୍ରଣାଳୀ। ସବୁଜ ପତ୍ରରେ ଥିବା କ୍ଲୋରୋଫିଲ୍ ସୂର୍ଯ୍ୟାଲୋକ ଶୋଷଣ କରେ, ଚେର ମାଟିରୁ ଜଳ (H₂O) ଆଣେ ଏବଂ ଷ୍ଟୋମାଟା ବାୟୁରୁ CO₂ ଗ୍ରହଣ କରେ। ଏହି ପ୍ରକ୍ରିୟାରେ ଗ୍ଲୁକୋଜ୍ (ଖାଦ୍ୟ) ତିଆରି ହୁଏ ଏବଂ ଜୀବଜଗତ ପାଇଁ ଅମ୍ଳଜାନ (O₂) ବାୟୁମଣ୍ଡଳକୁ ମୁକ୍ତ ହୁଏ।\n\nସନ୍ତୁଳିତ ସମୀକରଣ:\n6CO₂ + 12H₂O ──[Chlorophyll / Sunlight]──> C₆H₁₂O₆ + 6O₂ + 6H₂O",
                     "Photosynthesis is the process by which green plants manufacture glucose from CO₂ and H₂O using solar energy absorbed by chlorophyll, releasing vital O₂ as a byproduct.\n\nBalanced Equation:\n6CO₂ + 12H₂O ──[Chlorophyll / Sunlight]──> C₆H₁₂O₆ + 6O₂ + 6H₂O"
@@ -292,5 +294,36 @@ object PilotCurriculumCatalog {
                 )
             }
         }
+    }
+
+    fun getSampleSharedPack(): LearningPack {
+        return LearningPack(
+            packId = "relaynet_class9_science_cell_biology_mesh",
+            titleOdia = "ଅଧ୍ୟାୟ ୧: କୋଷ ଗଠନ ଓ କାର୍ଯ୍ୟ (Cell Biology)",
+            titleEnglish = "Chapter 1: Cell Structure & Fundamental Unit of Life",
+            board = Board.ODISHA_STATE,
+            classGrade = 9,
+            subject = "Science (ବିଜ୍ଞାନ)",
+            chapterNumber = 1,
+            chapterOdia = "ଅଧ୍ୟାୟ ୧: ଜୀବକୋଷର ଗଠନ",
+            chapterEnglish = "Chapter 1: The Fundamental Unit of Life",
+            topicOdia = "କୋଷ ଅଙ୍ଗିକା, ମାଇଟୋକଣ୍ଡ୍ରିଆ ଓ ପ୍ଲାଷ୍ଟିଡ୍",
+            topicEnglish = "Cell Organelles, Mitochondria & Plastids",
+            version = 1,
+            sizeBytes = 1450000L,
+            checksumSha256 = "c9f1a23b5d7e8f90123456789abcdef0123456789abcdef0123456789abcdef0",
+            isDownloaded = true,
+            isReceivedViaMesh = true,
+            origin = com.nmiet.app.domain.model.ContentOrigin.P2P_RECEIVED,
+            peerSenderName = "Rahul-Phone (Nearby Peer)",
+            sourceAttribution = "Odisha State Board BSE & Shared via ShikshaMesh",
+            lesson = LessonData(
+                summaryOdia = "କୋଷ ହେଉଛି ସମସ୍ତ ଜୀବମାନଙ୍କର ମୌଳିକ ଗଠନମୂଳକ ଓ କାର୍ଯ୍ୟକାରୀ ଏକକ। ରବର୍ଟ ହୁକ୍ ୧୬୬୫ ଖ୍ରୀଷ୍ଟାବ୍ଦରେ କୋଷ ଆବିଷ୍କାର କରିଥିଲେ।",
+                summaryEnglish = "The cell is the basic structural and functional unit of all living organisms. Discovered by Robert Hooke in 1665.",
+                equationOrFormula = null,
+                sections = emptyList()
+            ),
+            quizQuestions = emptyList()
+        )
     }
 }

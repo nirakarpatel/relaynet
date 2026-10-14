@@ -20,6 +20,18 @@ interface LearningDao {
     @Query("SELECT * FROM learning_packs ORDER BY grade ASC, subject ASC")
     fun getAllPacks(): Flow<List<LearningPackEntity>>
 
+    @Query("SELECT * FROM learning_packs WHERE origin IN ('CLOUD_DOWNLOADED', 'INTERNET_DOWNLOADED') ORDER BY grade ASC, chapterNumber ASC")
+    fun getDownloadedPacks(): Flow<List<LearningPackEntity>>
+
+    @Query("SELECT * FROM learning_packs WHERE origin IN ('P2P_RECEIVED', 'P2P_SENT') ORDER BY receivedTimestamp DESC")
+    fun getSharedPacks(): Flow<List<LearningPackEntity>>
+
+    @Query("SELECT * FROM learning_packs WHERE origin = :origin ORDER BY grade ASC, chapterNumber ASC")
+    fun getPacksByOrigin(origin: com.nmiet.app.domain.model.ContentOrigin): Flow<List<LearningPackEntity>>
+
+    @Query("SELECT * FROM learning_packs WHERE titleOdia LIKE '%' || :query || '%' OR titleEnglish LIKE '%' || :query || '%' OR odiaContentJson LIKE '%' || :query || '%' OR englishContentJson LIKE '%' || :query || '%' OR sectionsJson LIKE '%' || :query || '%' LIMIT 3")
+    fun searchPacksOffline(query: String): List<LearningPackEntity>
+
     @Query("SELECT * FROM learning_packs WHERE packId = :packId LIMIT 1")
     fun getPackById(packId: String): Flow<LearningPackEntity?>
 
@@ -67,4 +79,23 @@ interface LearningDao {
 
     @Query("DELETE FROM tutor_messages")
     fun clearTutorMessages()
+
+    // --- Generated Notes ---
+    @Query("SELECT * FROM generated_notes ORDER BY createdAt DESC")
+    fun getAllGeneratedNotes(): Flow<List<GeneratedNoteEntity>>
+
+    @Query("SELECT * FROM generated_notes WHERE noteId = :noteId LIMIT 1")
+    fun getNoteById(noteId: String): Flow<GeneratedNoteEntity?>
+
+    @Query("SELECT * FROM generated_notes WHERE topicId = :topicId LIMIT 1")
+    fun getNoteByTopicId(topicId: String): GeneratedNoteEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertNote(note: GeneratedNoteEntity)
+
+    @Query("UPDATE generated_notes SET isBookmarked = :isBookmarked WHERE noteId = :noteId")
+    fun updateNoteBookmark(noteId: String, isBookmarked: Boolean)
+
+    @Query("DELETE FROM generated_notes WHERE noteId = :noteId")
+    fun deleteNote(noteId: String)
 }
