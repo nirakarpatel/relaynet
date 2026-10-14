@@ -27,6 +27,17 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.ZoomIn
+import java.io.File
+import android.content.Context
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.AsyncImage
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -82,6 +93,8 @@ fun LessonReaderScreen(
 
     var languageMode by remember { mutableStateOf(AppLanguage.BILINGUAL_EN_OR) }
     var selectedGlossaryTerm by remember { mutableStateOf<KeyTerm?>(null) }
+    var showFullscreenDiagram by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // Audio Read-Aloud Player state
     var isPlayingAudio by remember { mutableStateOf(false) }
@@ -135,6 +148,9 @@ fun LessonReaderScreen(
         } else {
             val lessonPack = pack!!
             val scrollState = rememberScrollState()
+            val diagramFile = remember(lessonPack.packId, lessonPack.diagramLocalPath) {
+                resolveDiagramFile(context, lessonPack.packId, lessonPack.diagramLocalPath)
+            }
 
             // Programmatic smooth scroll to photolysis subsection when deep-linked from diagnostic card
             LaunchedEffect(targetSection, pack) {
@@ -266,6 +282,17 @@ fun LessonReaderScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Concept Flowchart & Visual Guide Diagram Card (Black Forest Labs FLUX.2 Klein)
+                if (diagramFile != null && diagramFile.exists()) {
+                    LessonDiagramCard(
+                        imageFile = diagramFile,
+                        title = lessonPack.titleEnglish,
+                        onFullscreenClick = { showFullscreenDiagram = true }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -466,6 +493,14 @@ fun LessonReaderScreen(
                     }
                 }
             }
+
+            if (showFullscreenDiagram && diagramFile != null && diagramFile.exists()) {
+                FullscreenDiagramDialog(
+                    imageFile = diagramFile,
+                    title = "${lessonPack.titleEnglish} • Concept Flowchart",
+                    onDismiss = { showFullscreenDiagram = false }
+                )
+            }
         }
     }
 }
@@ -547,4 +582,197 @@ fun FloatingAudioPlayerBar(
             )
         }
     }
+}
+
+@Composable
+fun LessonDiagramCard(
+    imageFile: File,
+    title: String,
+    onFullscreenClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+            .clickable { onFullscreenClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "📊 Concept Flowchart & Visual Guide",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(Icons.Default.ZoomIn, contentDescription = "Zoom")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            AsyncImage(
+                model = imageFile,
+                contentDescription = title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Tap to view full high-resolution diagram",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FullscreenDiagramDialog(
+    imageFile: File,
+    title: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        var scale by remember { mutableFloatStateOf(1f) }
+        var offsetX by remember { mutableFloatStateOf(0f) }
+        var offsetY by remember { mutableFloatStateOf(0f) }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.95f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            if (scale > 1f) {
+                                offsetX += pan.x
+                                offsetY += pan.y
+                            } else {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = imageFile,
+                    contentDescription = title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY
+                        ),
+                    contentScale = ContentScale.Fit
+                )
+            }
+
+            // Top bar controls
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = androidx.compose.ui.graphics.Color.White
+                    )
+                }
+            }
+
+            // Hint at bottom
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 24.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Pinch to zoom • Drag to pan (${"%.1f".format(scale)}x)",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+fun resolveDiagramFile(context: Context, packId: String, diagramLocalPath: String?): File? {
+    if (!diagramLocalPath.isNullOrBlank()) {
+        val f = File(diagramLocalPath)
+        if (f.exists() && f.length() > 0) return f
+        val relativeF = File(context.filesDir, diagramLocalPath)
+        if (relativeF.exists() && relativeF.length() > 0) return relativeF
+    }
+    // Check canonical pack diagram folder
+    val packDiagramDir = File(context.filesDir, "learning_packs/$packId/diagrams")
+    if (packDiagramDir.exists()) {
+        val files = packDiagramDir.listFiles { file ->
+            val ext = file.extension.lowercase()
+            ext in listOf("jpg", "jpeg", "webp", "png")
+        }
+        if (!files.isNullOrEmpty()) return files.first()
+    }
+    // Check root diagrams directory
+    val rootDiagramDir = File(context.filesDir, "diagrams")
+    if (rootDiagramDir.exists()) {
+        val files = rootDiagramDir.listFiles { file ->
+            val ext = file.extension.lowercase()
+            ext in listOf("jpg", "jpeg", "webp", "png")
+        }
+        if (!files.isNullOrEmpty()) return files.first()
+    }
+    // Fallback: unpack from assets if available
+    try {
+        val assetDir = "diagrams"
+        val assets = context.assets.list(assetDir) ?: emptyArray()
+        if (assets.isNotEmpty()) {
+            val assetName = assets.firstOrNull { it.contains("photosynthesis", ignoreCase = true) } ?: assets.first()
+            val targetDir = File(context.filesDir, "diagrams").apply { mkdirs() }
+            val targetFile = File(targetDir, assetName)
+            if (!targetFile.exists() || targetFile.length() == 0L) {
+                context.assets.open("$assetDir/$assetName").use { input ->
+                    targetFile.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            if (targetFile.exists() && targetFile.length() > 0) return targetFile
+        }
+    } catch (_: Exception) {}
+    return null
 }

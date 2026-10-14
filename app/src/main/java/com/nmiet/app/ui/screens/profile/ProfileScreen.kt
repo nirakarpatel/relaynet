@@ -86,6 +86,7 @@ fun ProfileScreen(
     val isBluetoothEnabled by settingsViewModel.isBluetoothEnabled.collectAsState()
     val hasNearbyPermissions by settingsViewModel.hasPermissions.collectAsState()
     val audioCacheSizeMb by settingsViewModel.audioCacheSizeMb.collectAsState()
+    val diagramsCacheSizeMb by settingsViewModel.diagramsCacheSizeMb.collectAsState()
     val coreDataSizeMb by settingsViewModel.coreDataSizeMb.collectAsState()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
@@ -322,11 +323,11 @@ fun ProfileScreen(
                 )
 
                 // Card C: Offline Storage Footprint
-                val totalFootprintMb = "%.1f".format(coreDataSizeMb + audioCacheSizeMb)
+                val totalFootprintMb = "%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)
                 HealthStatusCard(
                     title = "Offline Storage Footprint",
                     statusText = "💾 $totalFootprintMb MB Total",
-                    subtitle = "${"%.1f".format(coreDataSizeMb)} MB Core SQLite • ${"%.1f".format(audioCacheSizeMb)} MB Audio Assets",
+                    subtitle = "${"%.1f".format(coreDataSizeMb)} MB Core • ${"%.1f".format(diagramsCacheSizeMb)} MB Diagrams • ${"%.1f".format(audioCacheSizeMb)} MB Audio",
                     icon = Icons.Default.Storage,
                     iconTint = PrimaryBlue,
                     containerColor = PrimaryBlue.copy(alpha = 0.08f),

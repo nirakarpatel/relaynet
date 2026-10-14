@@ -39,6 +39,13 @@ interface ContentRepository {
         language: String = "odia"
     ): TutorMessage
 
+    suspend fun scanAndSolveTextbook(
+        imageBitmap: Bitmap,
+        userPrompt: String? = null,
+        language: String = "en_or",
+        curriculumContext: String = "Class 9 Science - Biology / Life Science"
+    ): TutorMessage
+
     suspend fun saveIncomingLearningPack(pack: LearningPack, peerName: String)
     suspend fun deleteLearningPack(packId: String)
     suspend fun resetToPilotDemoPacks()
@@ -49,4 +56,6 @@ interface ContentRepository {
     suspend fun toggleNoteBookmark(noteId: String, isBookmarked: Boolean)
     suspend fun deleteGeneratedNote(noteId: String)
     suspend fun getPackByIdOnce(packId: String): LearningPack?
+    fun setApiKey(key: String)
+    fun getApiKey(): String
 }
