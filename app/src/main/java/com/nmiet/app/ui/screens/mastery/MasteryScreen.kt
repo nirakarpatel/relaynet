@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.TopicMastery
 import com.nmiet.app.ui.components.AppTopBar
 import com.nmiet.app.ui.components.formatRelativeTime
@@ -63,6 +64,7 @@ fun MasteryScreen(
     onRetakeTopicQuiz: (packId: String, topicTag: String) -> Unit = { _, _ -> },
     onPracticeTopic: (String) -> Unit = {}
 ) {
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val masteryList by viewModel.topicMasteryList.collectAsState()
     val attempts by viewModel.quizAttempts.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
@@ -71,10 +73,18 @@ fun MasteryScreen(
         masteryList.map { it.masteryScore }.average().toInt()
     } else 61
 
+    val screenTitle = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> "Mastery & Diagnostics"
+        AppLanguage.ODIA_ONLY -> "ଦକ୍ଷତା ଓ ନିଦାନ"
+        AppLanguage.HINDI_ONLY -> "दक्षता एवं निदान"
+        AppLanguage.BILINGUAL_EN_HI -> "Mastery & Diagnostics • दक्षता"
+        AppLanguage.BILINGUAL_EN_OR -> "Mastery & Diagnostics • ଦକ୍ଷତା"
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Mastery & Diagnostics",
+                title = screenTitle,
                 isOnline = syncStatus.isOnline
             )
         }
@@ -142,8 +152,15 @@ fun MasteryScreen(
                 Spacer(modifier = Modifier.height(18.dp))
 
                 // Targeted Practice Deck
+                val practiceDeckTitle = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Targeted Practice Deck"
+                    AppLanguage.ODIA_ONLY -> "ସମ୍ଭାବ୍ୟ ଅଭ୍ୟାସ ଡେକ୍"
+                    AppLanguage.HINDI_ONLY -> "लक्षित अभ्यास डेक"
+                    AppLanguage.BILINGUAL_EN_HI -> "Targeted Practice Deck (लक्षित अभ्यास)"
+                    AppLanguage.BILINGUAL_EN_OR -> "Targeted Practice Deck (ସମ୍ଭାବ୍ୟ ଅଭ୍ୟାସ)"
+                }
                 Text(
-                    text = "Targeted Practice Deck (ସମ୍ଭାବ୍ୟ ଅଭ୍ୟାସ)",
+                    text = practiceDeckTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -157,6 +174,7 @@ fun MasteryScreen(
                 // Dynamic targeted practice cards
                 TargetedPracticeDeckSection(
                     attempts = attempts,
+                    currentLanguage = currentLanguage,
                     onReadTopic = onReadTopic,
                     onRetakeTopicQuiz = onRetakeTopicQuiz
                 )
@@ -174,6 +192,7 @@ fun MasteryScreen(
             items(masteryList, key = { it.topicId }) { mastery ->
                 TopicMasteryCard(
                     mastery = mastery,
+                    currentLanguage = currentLanguage,
                     onPracticeClick = { onPracticeTopic(mastery.topicId) }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
@@ -344,6 +363,7 @@ fun CategorizationTierBadge(scorePercent: Int) {
 @Composable
 fun TargetedPracticeDeckSection(
     attempts: List<com.nmiet.app.domain.model.QuizAttempt>,
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR,
     onReadTopic: (packId: String, sectionTag: String) -> Unit,
     onRetakeTopicQuiz: (packId: String, topicTag: String) -> Unit
 ) {
@@ -375,11 +395,28 @@ fun TargetedPracticeDeckSection(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Remediation Action Buttons:
+            // Button 1: "Read Topic" / "ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ" / "विषय पढ़ें"
+            // Button 2: "Retake Quiz" / "ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ" / "क्विज दोबारा दें"
+            val readTopicBtnText = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "📖 Read Topic"
+                AppLanguage.ODIA_ONLY -> "📖 ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "📖 विषय पढ़ें"
+                AppLanguage.BILINGUAL_EN_HI -> "📖 Read Topic\n(विषय पढ़ें)"
+                AppLanguage.BILINGUAL_EN_OR -> "📖 Read Topic\n(ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ)"
+            }
+            val retakeQuizBtnText = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "🎯 Retake Quiz"
+                AppLanguage.ODIA_ONLY -> "🎯 ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "🎯 क्विज दोबारा दें"
+                AppLanguage.BILINGUAL_EN_HI -> "🎯 Retake Quiz\n(क्विज दोबारा दें)"
+                AppLanguage.BILINGUAL_EN_OR -> "🎯 Retake Quiz\n(ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ)"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Button 1: 📖 Read Topic (ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ)
                 OutlinedButton(
                     onClick = { onReadTopic(packId, "photolysis") },
                     modifier = Modifier.weight(1f),
@@ -388,7 +425,7 @@ fun TargetedPracticeDeckSection(
                     Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "📖 Read Topic\n(ପ୍ରସଙ୍ଗ ପଢ଼ନ୍ତୁ)",
+                        text = readTopicBtnText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
@@ -396,7 +433,6 @@ fun TargetedPracticeDeckSection(
                     )
                 }
 
-                // Button 2: 🎯 Retake Topic Quiz (ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ)
                 Button(
                     onClick = { onRetakeTopicQuiz(packId, "PHOTOLYSIS_WATER") },
                     modifier = Modifier.weight(1f),
@@ -406,7 +442,7 @@ fun TargetedPracticeDeckSection(
                     Icon(imageVector = Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "🎯 Retake Quiz\n(ଅଭ୍ୟାସ କୁଇଜ୍ ଦିଅନ୍ତୁ)",
+                        text = retakeQuizBtnText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center,
@@ -421,6 +457,7 @@ fun TargetedPracticeDeckSection(
 @Composable
 fun TopicMasteryCard(
     mastery: TopicMastery,
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR,
     onPracticeClick: () -> Unit
 ) {
     Card(
@@ -430,14 +467,29 @@ fun TopicMasteryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            val topicTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> mastery.topicTitleEnglish
+                AppLanguage.ODIA_ONLY -> mastery.topicTitleOdia
+                AppLanguage.HINDI_ONLY -> if (mastery.topicTitleHindi.isNotBlank()) mastery.topicTitleHindi else mastery.topicTitleEnglish
+                AppLanguage.BILINGUAL_EN_HI -> if (mastery.topicTitleHindi.isNotBlank()) "${mastery.topicTitleEnglish} (${mastery.topicTitleHindi})" else mastery.topicTitleEnglish
+                AppLanguage.BILINGUAL_EN_OR -> "${mastery.topicTitleEnglish} (${mastery.topicTitleOdia})"
+            }
+
+            val practiceBtnLabel = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Practice Topic"
+                AppLanguage.ODIA_ONLY -> "ପୁନର୍ବାର ଅଭ୍ୟାସ କରନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "विषय का अभ्यास करें"
+                AppLanguage.BILINGUAL_EN_HI -> "Practice Topic (अभ्यास करें)"
+                AppLanguage.BILINGUAL_EN_OR -> "Practice Topic (ଅଭ୍ୟାସ କରନ୍ତୁ)"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(text = mastery.topicTitleEnglish, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(text = mastery.topicTitleOdia, fontSize = 12.sp, color = PrimaryBlue)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = topicTitle, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
                 Text(
                     text = "${mastery.masteryScore}%",
@@ -475,7 +527,7 @@ fun TopicMasteryCard(
                 onClick = onPracticeClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Practice Topic (ପୁନର୍ବାର ଅଭ୍ୟାସ କରନ୍ତୁ)", fontSize = 12.sp)
+                Text(practiceBtnLabel, fontSize = 12.sp)
             }
         }
     }

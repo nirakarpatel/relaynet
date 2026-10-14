@@ -2,7 +2,9 @@ package com.nmiet.app.ui.screens.curriculum
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.remote.PilotCurriculumCatalog
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.ContentOrigin
 import com.nmiet.app.domain.model.CurriculumNode
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -24,8 +27,14 @@ enum class ContentBucketFilter {
 }
 
 class CurriculumViewModel(
-    private val repository: ContentRepository
+    private val repository: ContentRepository,
+    val languageManager: LanguageManager? = null
 ) : ViewModel() {
+
+    val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
+        ?: repository.getLearnerProfileFlow()
+            .map { it.preferredLanguage }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.BILINGUAL_EN_OR)
 
     val profile: StateFlow<LearnerProfile> = repository.getLearnerProfileFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())

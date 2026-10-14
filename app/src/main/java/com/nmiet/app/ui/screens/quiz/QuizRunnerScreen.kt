@@ -231,13 +231,18 @@ fun QuizRunnerScreen(
 
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             FilterChip(
-                                selected = language == AppLanguage.ODIA,
-                                onClick = { viewModel.setLanguage(AppLanguage.ODIA) },
+                                selected = language == AppLanguage.ODIA_ONLY || language == AppLanguage.BILINGUAL_EN_OR,
+                                onClick = { viewModel.setLanguage(AppLanguage.ODIA_ONLY) },
                                 label = { Text("ଓଡ଼ିଆ", fontSize = 11.sp) }
                             )
                             FilterChip(
-                                selected = language == AppLanguage.ENGLISH,
-                                onClick = { viewModel.setLanguage(AppLanguage.ENGLISH) },
+                                selected = language == AppLanguage.HINDI_ONLY || language == AppLanguage.BILINGUAL_EN_HI,
+                                onClick = { viewModel.setLanguage(AppLanguage.HINDI_ONLY) },
+                                label = { Text("हिंदी", fontSize = 11.sp) }
+                            )
+                            FilterChip(
+                                selected = language == AppLanguage.ENGLISH_ONLY,
+                                onClick = { viewModel.setLanguage(AppLanguage.ENGLISH_ONLY) },
                                 label = { Text("English", fontSize = 11.sp) }
                             )
                         }
@@ -270,26 +275,18 @@ fun QuizRunnerScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (language == AppLanguage.ODIA) currentQuestion.questionOdia else currentQuestion.questionEnglish,
+                                text = currentQuestion.getQuestion(language),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = 24.sp
                             )
-                            if (language == AppLanguage.ODIA) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = currentQuestion.questionEnglish,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // 4 Multiple-Choice Options
-                    val options = if (language == AppLanguage.ODIA) currentQuestion.optionsOdia else currentQuestion.optionsEnglish
+                    val options = currentQuestion.getOptions(language)
                     options.forEachIndexed { index, optionText ->
                         val isSelected = selectedOption == index
                         val isCorrect = index == currentQuestion.correctIndex
@@ -354,10 +351,7 @@ fun QuizRunnerScreen(
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = if (language == AppLanguage.ODIA)
-                                                currentQuestion.misconceptionHintOdia
-                                            else
-                                                currentQuestion.misconceptionHintEnglish,
+                                            text = currentQuestion.getMisconceptionHint(language),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             lineHeight = 18.sp,
@@ -378,7 +372,7 @@ fun QuizRunnerScreen(
                                         Column {
                                             Text("✓ Correct Concept Application!", fontWeight = FontWeight.Bold, color = SuccessGreen, fontSize = 13.sp)
                                             Text(
-                                                text = if (language == AppLanguage.ODIA) currentQuestion.explanationOdia else currentQuestion.explanationEnglish,
+                                                text = currentQuestion.getExplanation(language),
                                                 fontSize = 11.sp,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )

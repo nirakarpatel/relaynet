@@ -3,6 +3,7 @@ package com.nmiet.app.ui.screens.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.LearnerProfile
@@ -18,8 +19,11 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val repository: ContentRepository,
-    private val context: Context
+    private val context: Context,
+    val languageManager: LanguageManager = LanguageManager.getInstance(context)
 ) : ViewModel() {
+
+    val currentLanguage: StateFlow<AppLanguage> = languageManager.currentLanguage
 
     val profile: StateFlow<LearnerProfile> = repository.getLearnerProfileFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())
@@ -60,6 +64,7 @@ class SettingsViewModel(
 
     fun updateLanguage(lang: AppLanguage) {
         val current = profile.value
+        languageManager.setLanguage(lang)
         viewModelScope.launch {
             repository.updateLearnerProfile(current.copy(preferredLanguage = lang))
         }

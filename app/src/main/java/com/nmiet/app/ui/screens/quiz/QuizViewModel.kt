@@ -2,6 +2,7 @@ package com.nmiet.app.ui.screens.quiz
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.QuizQuestion
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 class QuizViewModel(
     private val repository: ContentRepository,
     val packId: String,
-    val topicTag: String? = null
+    val topicTag: String? = null,
+    val languageManager: LanguageManager? = null
 ) : ViewModel() {
 
     private val _learningPack = MutableStateFlow<LearningPack?>(null)
@@ -29,7 +31,7 @@ class QuizViewModel(
     private val _isAnswerSubmitted = MutableStateFlow(false)
     val isAnswerSubmitted: StateFlow<Boolean> = _isAnswerSubmitted.asStateFlow()
 
-    private val _language = MutableStateFlow(AppLanguage.ODIA)
+    private val _language = MutableStateFlow(languageManager?.currentLanguage?.value ?: AppLanguage.BILINGUAL_EN_OR)
     val language: StateFlow<AppLanguage> = _language.asStateFlow()
 
     private val _correctCount = MutableStateFlow(0)

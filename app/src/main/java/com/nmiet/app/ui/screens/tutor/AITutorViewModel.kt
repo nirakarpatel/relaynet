@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.SyncStatus
 import com.nmiet.app.domain.model.TutorMessage
 import com.nmiet.app.domain.repository.ContentRepository
@@ -13,12 +15,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AITutorViewModel(
-    private val repository: ContentRepository
+    private val repository: ContentRepository,
+    val languageManager: LanguageManager? = null
 ) : ViewModel() {
+
+    val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
+        ?: repository.getLearnerProfileFlow()
+            .map { it.preferredLanguage }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.BILINGUAL_EN_OR)
 
     val messages: StateFlow<List<TutorMessage>> = repository.getTutorMessagesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

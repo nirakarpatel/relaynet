@@ -80,7 +80,7 @@ fun LessonReaderScreen(
     val pack by repository.getLearningPackByIdFlow(packId).collectAsState(initial = null)
     val syncStatus by repository.getSyncStatusFlow().collectAsState(initial = com.nmiet.app.domain.model.SyncStatus())
 
-    var languageMode by remember { mutableStateOf(AppLanguage.BILINGUAL) }
+    var languageMode by remember { mutableStateOf(AppLanguage.BILINGUAL_EN_OR) }
     var selectedGlossaryTerm by remember { mutableStateOf<KeyTerm?>(null) }
 
     // Audio Read-Aloud Player state
@@ -170,9 +170,11 @@ fun LessonReaderScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             val options = listOf(
-                                AppLanguage.BILINGUAL to "Bilingual",
-                                AppLanguage.ODIA to "ଓଡ଼ିଆ",
-                                AppLanguage.ENGLISH to "English"
+                                AppLanguage.BILINGUAL_EN_OR to "EN+OR",
+                                AppLanguage.BILINGUAL_EN_HI to "EN+HI",
+                                AppLanguage.ODIA_ONLY to "ଓଡ଼ିଆ",
+                                AppLanguage.HINDI_ONLY to "हिंदी",
+                                AppLanguage.ENGLISH_ONLY to "English"
                             )
 
                             options.forEachIndexed { index, pair ->
@@ -181,7 +183,7 @@ fun LessonReaderScreen(
                                     onClick = { languageMode = pair.first },
                                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
                                 ) {
-                                    Text(text = pair.second, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(text = pair.second, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -256,40 +258,12 @@ fun LessonReaderScreen(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                when (languageMode) {
-                    AppLanguage.BILINGUAL -> {
-                        Text(
-                            text = lessonPack.lesson.summaryOdia,
-                            fontSize = 14.sp,
-                            lineHeight = 22.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = lessonPack.lesson.summaryEnglish,
-                            fontSize = 13.sp,
-                            lineHeight = 20.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    AppLanguage.ODIA -> {
-                        Text(
-                            text = lessonPack.lesson.summaryOdia,
-                            fontSize = 14.sp,
-                            lineHeight = 22.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    AppLanguage.ENGLISH -> {
-                        Text(
-                            text = lessonPack.lesson.summaryEnglish,
-                            fontSize = 14.sp,
-                            lineHeight = 22.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                Text(
+                    text = lessonPack.lesson.getSummary(languageMode),
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider()
@@ -333,57 +307,18 @@ fun LessonReaderScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                     }
 
-                    when (languageMode) {
-                        AppLanguage.BILINGUAL -> {
-                            Text(
-                                text = section.titleOdia,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryBlue
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = section.contentOdia,
-                                fontSize = 14.sp,
-                                lineHeight = 22.sp
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = section.contentEnglish,
-                                fontSize = 13.sp,
-                                lineHeight = 20.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        AppLanguage.ODIA -> {
-                            Text(
-                                text = section.titleOdia,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryBlue
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = section.contentOdia,
-                                fontSize = 14.sp,
-                                lineHeight = 22.sp
-                            )
-                        }
-                        AppLanguage.ENGLISH -> {
-                            Text(
-                                text = section.titleEnglish,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PrimaryBlue
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = section.contentEnglish,
-                                fontSize = 14.sp,
-                                lineHeight = 22.sp
-                            )
-                        }
-                    }
+                    Text(
+                        text = section.getTitle(languageMode),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryBlue
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = section.getContent(languageMode),
+                        fontSize = 13.sp,
+                        lineHeight = 21.sp
+                    )
 
                     Spacer(modifier = Modifier.height(10.dp))
 

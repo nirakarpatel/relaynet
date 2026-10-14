@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.nmiet.app.data.local.AppDatabase
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.repository.ContentRepositoryImpl
 import com.nmiet.app.navigation.AppNavHost
 import com.nmiet.app.nearby.BluetoothTransferManager
@@ -57,16 +58,18 @@ class MainActivity : ComponentActivity() {
             }
         )
 
-        // 4. Initialize Core ViewModels
-        val curriculumViewModel = CurriculumViewModel(repository)
-        val aiTutorViewModel = AITutorViewModel(repository)
+        // 4. Initialize Core ViewModels & Language Engine
+        val languageManager = LanguageManager.getInstance(applicationContext)
+        val curriculumViewModel = CurriculumViewModel(repository, languageManager)
+        val aiTutorViewModel = AITutorViewModel(repository, languageManager)
         val nearbyShareViewModel = NearbyShareViewModel(
             repository = repository,
             demoManager = demoTransferManager,
-            bluetoothManager = bluetoothTransferManager
+            bluetoothManager = bluetoothTransferManager,
+            languageManager = languageManager
         )
-        val masteryViewModel = MasteryViewModel(repository)
-        val settingsViewModel = SettingsViewModel(repository, applicationContext)
+        val masteryViewModel = MasteryViewModel(repository, languageManager)
+        val settingsViewModel = SettingsViewModel(repository, applicationContext, languageManager)
 
         // 5. Mount App Navigation & UI
         setContent {
