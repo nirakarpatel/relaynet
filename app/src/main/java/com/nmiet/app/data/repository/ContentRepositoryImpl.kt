@@ -499,52 +499,9 @@ class ContentRepositoryImpl(
 
     // --- LearnLite Content Catalogue & Downloads ---
     private val _contentItems = MutableStateFlow<List<com.nmiet.app.domain.model.ContentItem>>(
-        listOf(
-            com.nmiet.app.domain.model.ContentItem(
-                id = "doc_class9_sci_photosynthesis_pdf",
-                title = "Class 9 Science: Plant Physiology & Photosynthesis",
-                description = "Complete BSE/CBSE curriculum textbook chapter with diagrams, chemical pathways, and Odia notes.",
-                mediaType = com.nmiet.app.domain.model.ContentMediaType.PDF_TEXTBOOK,
-                remoteUrl = "https://relaynet-cdn.example.org/docs/class9_science_photosynthesis.pdf",
-                localFilePath = null,
-                sizeBytes = 4_250_000L, // 4.25 MB
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                classGrade = 9,
-                subject = "Science (Biology)",
-                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
-                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.NOT_DOWNLOADED
-            ),
-            com.nmiet.app.domain.model.ContentItem(
-                id = "vid_class9_sci_photolysis_video",
-                title = "Video Lesson: Water Photolysis & Oxygen Evolution",
-                description = "High-definition bilingual visual breakdown of chloroplast anatomy and the Hill reaction.",
-                mediaType = com.nmiet.app.domain.model.ContentMediaType.VIDEO_LESSON,
-                remoteUrl = "https://relaynet-cdn.example.org/videos/water_photolysis_class9.mp4",
-                localFilePath = null,
-                sizeBytes = 28_400_000L, // 28.4 MB
-                sha256Checksum = "d41d8cd98f00b204e9800998ecf8427e00000000000000000000000000000000",
-                classGrade = 9,
-                subject = "Science (Biology)",
-                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
-                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.NOT_DOWNLOADED
-            ),
-            com.nmiet.app.domain.model.ContentItem(
-                id = "pack_class9_sci_photosynthesis_v1",
-                title = "Offline Learning Pack: Chapter 4 Complete Bundle",
-                description = "Bilingual Odia/English lesson, interactive diagnostic quiz, and formula glossary archive.",
-                mediaType = com.nmiet.app.domain.model.ContentMediaType.LEARNING_PACK_ZIP,
-                remoteUrl = "http://10.0.2.2:8000/content-packs/relaynet_class9_science_photosynthesis_v1/download",
-                localFilePath = "packs/relaynet_class9_science_photosynthesis_v1.zip",
-                sizeBytes = 1_850_000L, // 1.85 MB
-                sha256Checksum = "9b64ff18413a21644d5c41460faec8b8849b38cff1a6c4b2670d9a6c98dc4627",
-                classGrade = 9,
-                subject = "Science (Biology)",
-                board = com.nmiet.app.domain.model.Board.ODISHA_STATE,
-                downloadStatus = com.nmiet.app.domain.model.DownloadStatus.COMPLETED,
-                downloadProgressPercent = 100
-            )
-        )
+        com.nmiet.app.data.remote.R2SampleCatalogue.getVerifiedSampleItems()
     )
+
 
     override fun getContentItemsFlow(): Flow<List<com.nmiet.app.domain.model.ContentItem>> =
         _contentItems.asStateFlow()

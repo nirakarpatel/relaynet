@@ -50,6 +50,10 @@ import com.nmiet.app.ui.screens.settings.SettingsScreen
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorScreen
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
+import com.nmiet.app.ai.llm.LiteRtLocalLlmEngine
+import com.nmiet.app.ai.llm.LocalModelManager
+import com.nmiet.app.ui.screens.playground.LocalAiPlaygroundScreen
+import com.nmiet.app.ui.screens.playground.LocalAiPlaygroundViewModel
 import com.nmiet.app.ui.theme.PrimaryBlue
 
 @Composable
@@ -85,7 +89,8 @@ fun AppNavHost(
             currentRoute?.startsWith("custom_quiz") == true ||
             currentRoute?.startsWith("downloads") == true ||
             currentRoute?.startsWith("study_planner") == true ||
-            currentRoute?.startsWith("teacher_tools") == true
+            currentRoute?.startsWith("teacher_tools") == true ||
+            currentRoute?.startsWith(Routes.LOCAL_AI_PLAYGROUND) == true
 
     Scaffold(
         bottomBar = {
@@ -212,6 +217,9 @@ fun AppNavHost(
                         viewModel = settingsViewModel,
                         onOpenTeacherTools = {
                             navController.navigate(Routes.TEACHER_TOOLS)
+                        },
+                        onOpenLocalAiPlayground = {
+                            navController.navigate(Routes.LOCAL_AI_PLAYGROUND)
                         }
                     )
                 }
@@ -325,7 +333,8 @@ fun AppNavHost(
                 composable(Routes.DOWNLOADS) {
                     com.nmiet.app.ui.screens.downloads.DownloadsScreen(
                         repository = repository,
-                        onBackClick = { navController.popBackStack() }
+                        onBackClick = { navController.popBackStack() },
+                        onOpenLesson = { packId -> navController.navigate(Routes.lessonReader(packId)) }
                     )
                 }
 
@@ -343,6 +352,18 @@ fun AppNavHost(
                     com.nmiet.app.ui.screens.teacher.TeacherToolsScreen(
                         repository = repository,
                         onBackClick = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Routes.LOCAL_AI_PLAYGROUND) {
+                    val playgroundViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        val modelManager = LocalModelManager(context.applicationContext)
+                        val engine = LiteRtLocalLlmEngine(context.applicationContext)
+                        LocalAiPlaygroundViewModel(modelManager, engine)
+                    }
+                    LocalAiPlaygroundScreen(
+                        viewModel = playgroundViewModel,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }
