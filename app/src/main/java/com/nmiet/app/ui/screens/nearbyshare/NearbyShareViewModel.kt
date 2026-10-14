@@ -2,7 +2,9 @@ package com.nmiet.app.ui.screens.nearbyshare
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.remote.PilotCurriculumCatalog
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.LearningPack
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -26,8 +29,14 @@ enum class ShareDirection {
 class NearbyShareViewModel(
     private val repository: ContentRepository,
     val demoManager: DemoTransferManager,
-    val bluetoothManager: BluetoothTransferManager
+    val bluetoothManager: BluetoothTransferManager,
+    val languageManager: LanguageManager? = null
 ) : ViewModel() {
+
+    val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
+        ?: repository.getLearnerProfileFlow()
+            .map { it.preferredLanguage }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppLanguage.BILINGUAL_EN_OR)
 
     private val _shareDirection = MutableStateFlow(ShareDirection.SEND)
     val shareDirection: StateFlow<ShareDirection> = _shareDirection.asStateFlow()

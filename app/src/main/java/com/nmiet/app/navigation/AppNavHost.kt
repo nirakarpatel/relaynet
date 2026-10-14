@@ -244,7 +244,7 @@ fun AppNavHost(
                     val packId = backStackEntry.arguments?.getString("packId") ?: ""
                     val topicTag = backStackEntry.arguments?.getString("topicTag")
                     val quizViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                        QuizViewModel(repository, packId, topicTag)
+                        QuizViewModel(repository, packId, topicTag, curriculumViewModel.languageManager)
                     }
                     QuizRunnerScreen(
                         viewModel = quizViewModel,

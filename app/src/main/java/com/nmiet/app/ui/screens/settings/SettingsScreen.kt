@@ -2,7 +2,9 @@ package com.nmiet.app.ui.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +71,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel
 ) {
     val profile by viewModel.profile.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
     val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
@@ -356,18 +359,65 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(text = "Preferred Language (ଭାଷା ପସନ୍ଦ):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
+                    Text(
+                        text = "Preferred Language (ଭାଷା ପସନ୍ଦ / भाषा चयन):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        AppLanguage.entries.forEach { lang ->
-                            FilterChip(
-                                selected = profile.preferredLanguage == lang,
-                                onClick = { viewModel.updateLanguage(lang) },
-                                label = { Text(lang.displayName, fontSize = 11.sp) }
-                            )
+                        val languageOptions = listOf(
+                            AppLanguage.ENGLISH_ONLY to "English",
+                            AppLanguage.ODIA_ONLY to "ଓଡ଼ିଆ (Odia)",
+                            AppLanguage.HINDI_ONLY to "हिंदी (Hindi)",
+                            AppLanguage.BILINGUAL_EN_HI to "English + हिंदी (Bilingual)",
+                            AppLanguage.BILINGUAL_EN_OR to "English + ଓଡ଼ିଆ (Bilingual)"
+                        )
+
+                        languageOptions.forEach { (lang, label) ->
+                            val isSelected = currentLanguage == lang
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.updateLanguage(lang) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ),
+                                border = if (isSelected)
+                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                else null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
