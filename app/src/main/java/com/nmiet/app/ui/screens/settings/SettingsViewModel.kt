@@ -44,9 +44,38 @@ class SettingsViewModel(
     private val _coreDataSizeMb = MutableStateFlow(1.4)
     val coreDataSizeMb: StateFlow<Double> = _coreDataSizeMb.asStateFlow()
 
+    private val _diagramsCacheSizeMb = MutableStateFlow(2.1)
+    val diagramsCacheSizeMb: StateFlow<Double> = _diagramsCacheSizeMb.asStateFlow()
+
     // Sync Queue Status
     private val _pendingSyncAttemptsCount = MutableStateFlow(3)
     val pendingSyncAttemptsCount: StateFlow<Int> = _pendingSyncAttemptsCount.asStateFlow()
+
+    // NVIDIA NIM / Cloud AI API Key State
+    private val apiPrefs = context.getSharedPreferences("relaynet_api_prefs", Context.MODE_PRIVATE)
+    private val _nvidiaApiKey = MutableStateFlow(apiPrefs.getString("nvidia_api_key", "") ?: "")
+    val nvidiaApiKey: StateFlow<String> = _nvidiaApiKey.asStateFlow()
+
+    init {
+        repository.setApiKey(_nvidiaApiKey.value)
+    }
+
+    fun saveNvidiaApiKey(key: String) {
+        val trimmed = key.trim()
+        _nvidiaApiKey.value = trimmed
+        apiPrefs.edit().putString("nvidia_api_key", trimmed).apply()
+        repository.setApiKey(trimmed)
+    }
+
+    fun clearNvidiaApiKey() {
+        _nvidiaApiKey.value = ""
+        apiPrefs.edit().remove("nvidia_api_key").apply()
+        repository.setApiKey("")
+    }
+
+    fun clearDiagramCache() {
+        _diagramsCacheSizeMb.value = 0.0
+    }
 
     fun updateBoard(board: Board) {
         val current = profile.value
@@ -119,6 +148,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             repository.resetToPilotDemoPacks()
             _audioCacheSizeMb.value = 12.8
+            _diagramsCacheSizeMb.value = 2.1
             _pendingSyncAttemptsCount.value = 3
         }
     }

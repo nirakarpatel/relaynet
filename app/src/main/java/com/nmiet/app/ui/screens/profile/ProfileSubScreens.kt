@@ -231,6 +231,7 @@ fun OfflineContentScreen(
     settingsViewModel: SettingsViewModel
 ) {
     val audioCacheSizeMb by settingsViewModel.audioCacheSizeMb.collectAsState()
+    val diagramsCacheSizeMb by settingsViewModel.diagramsCacheSizeMb.collectAsState()
     val coreDataSizeMb by settingsViewModel.coreDataSizeMb.collectAsState()
     val pendingSyncAttemptsCount by settingsViewModel.pendingSyncAttemptsCount.collectAsState()
     val syncStatus by settingsViewModel.syncStatus.collectAsState()
@@ -327,12 +328,17 @@ fun OfflineContentScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("• Core Room SQLite Data:", fontSize = 13.sp)
+                        Text("• Core Data & Quizzes:", fontSize = 13.sp)
                         Text("${"%.1f".format(coreDataSizeMb)} MB", fontWeight = FontWeight.Bold, color = PrimaryBlue)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("• Cached Odia/Hindi Audio:", fontSize = 13.sp)
+                        Text("• Generated Flowcharts & Diagrams:", fontSize = 13.sp)
+                        Text("${"%.1f".format(diagramsCacheSizeMb)} MB", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("• Cached Audio:", fontSize = 13.sp)
                         Text("${"%.1f".format(audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold, color = WarningAmber)
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
@@ -341,21 +347,38 @@ fun OfflineContentScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Total: ${"%.1f".format(coreDataSizeMb + audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold)
-                        Button(
-                            onClick = {
-                                val freed = audioCacheSizeMb
-                                settingsViewModel.clearAudioCache()
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Audio cache cleared (${"%.1f".format(freed)} MB freed).")
-                                }
-                            },
-                            enabled = audioCacheSizeMb > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear Audio", fontSize = 11.sp)
+                        Text("Total: ${"%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    val freed = diagramsCacheSizeMb
+                                    settingsViewModel.clearDiagramCache()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Diagram cache cleared (${"%.1f".format(freed)} MB freed).")
+                                    }
+                                },
+                                enabled = diagramsCacheSizeMb > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("Clear Diagrams", fontSize = 11.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    val freed = audioCacheSizeMb
+                                    settingsViewModel.clearAudioCache()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar("Audio cache cleared (${"%.1f".format(freed)} MB freed).")
+                                    }
+                                },
+                                enabled = audioCacheSizeMb > 0,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Clear Audio", fontSize = 11.sp)
+                            }
                         }
                     }
                 }

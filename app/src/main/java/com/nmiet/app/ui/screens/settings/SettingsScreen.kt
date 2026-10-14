@@ -43,21 +43,39 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.permissions.NearbyPermissionManager
@@ -77,8 +95,14 @@ fun SettingsScreen(
     val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
 
     val audioCacheSizeMb by viewModel.audioCacheSizeMb.collectAsState()
+    val diagramsCacheSizeMb by viewModel.diagramsCacheSizeMb.collectAsState()
     val coreDataSizeMb by viewModel.coreDataSizeMb.collectAsState()
     val pendingSyncAttemptsCount by viewModel.pendingSyncAttemptsCount.collectAsState()
+    val configuredApiKey by viewModel.nvidiaApiKey.collectAsState()
+    var apiKeyInput by remember(configuredApiKey) { mutableStateOf(configuredApiKey) }
+    var isApiKeyVisible by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -87,6 +111,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             AppTopBar(
                 title = "Settings & Evaluator Controls",
@@ -196,7 +221,17 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "• Cached Audio Assets:", fontSize = 13.sp)
+                        Text(text = "• Generated Flowcharts & Diagrams:", fontSize = 13.sp)
+                        Text(text = "${"%.1f".format(diagramsCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "• Cached Audio:", fontSize = 13.sp)
                         Text(text = "${"%.1f".format(audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = WarningAmber)
                     }
 
@@ -208,20 +243,31 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + audioCacheSizeMb)} MB",
+                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)} MB",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
 
-                        // Clear Audio Cache button
-                        Button(
-                            onClick = { viewModel.clearAudioCache() },
-                            enabled = audioCacheSizeMb > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear Audio Cache", fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { viewModel.clearDiagramCache() },
+                                enabled = diagramsCacheSizeMb > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("Clear Diagrams", fontSize = 11.sp)
+                            }
+
+                            // Clear Audio Cache button
+                            Button(
+                                onClick = { viewModel.clearAudioCache() },
+                                enabled = audioCacheSizeMb > 0,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Clear Audio", fontSize = 11.sp)
+                            }
                         }
                     }
 
@@ -487,7 +533,135 @@ fun SettingsScreen(
                 Text("Reset & Reload Class 9 Science Pilot Pack")
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Section 6: Cloud AI & NVIDIA NIM API Key Configuration
+            Text(
+                text = "Cloud AI & NVIDIA NIM API Key",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = PrimaryBlue)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "NVIDIA NIM / Cloud API Key",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Add your API key manually for Nemotron-3-Super reasoning, Llama-3.2 Vision OCR, and FLUX.2 diagram generation.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("API Key (nvapi-...)") },
+                        placeholder = { Text("nvapi-xxxxxxxxxxxxxxxxxxxxxxxx") },
+                        singleLine = true,
+                        visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                                Icon(
+                                    imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (isApiKeyVisible) "Hide Key" else "Show Key"
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (configuredApiKey.isNotBlank())
+                                "Status: Active (${configuredApiKey.take(7)}••••${configuredApiKey.takeLast(4)})"
+                            else
+                                "Status: Offline / Fallback Mode",
+                            fontSize = 11.sp,
+                            color = if (configuredApiKey.isNotBlank()) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        if (configuredApiKey.isNotBlank()) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                apiKeyInput = ""
+                                viewModel.clearNvidiaApiKey()
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("API Key cleared. Reverted to offline fallback.")
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = configuredApiKey.isNotBlank() || apiKeyInput.isNotBlank()
+                        ) {
+                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Clear")
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.saveNvidiaApiKey(apiKeyInput)
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("API Key saved successfully for NVIDIA NIM services.")
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = apiKeyInput.isNotBlank() && apiKeyInput != configuredApiKey
+                        ) {
+                            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Save Key")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Blueprint Footer
             Card(

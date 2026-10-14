@@ -4,13 +4,19 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -96,6 +102,8 @@ fun AITutorScreen(
     val attachedImage by viewModel.attachedImage.collectAsState()
     val isRecording by viewModel.isRecordingVoice.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val isScanningImage by viewModel.isScanningImage.collectAsState()
+    val offlineNotice by viewModel.offlineNotice.collectAsState()
 
     val listState = rememberLazyListState()
 
@@ -177,6 +185,55 @@ fun AITutorScreen(
                 }
             }
 
+            // Offline Notification Banner for Photo Scan
+            AnimatedVisibility(
+                visible = offlineNotice != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                if (offlineNotice != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = offlineNotice!!,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f),
+                                lineHeight = 16.sp
+                            )
+                            IconButton(
+                                onClick = { viewModel.clearOfflineNotice() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Chat Messages Stream
             LazyColumn(
                 state = listState,
@@ -202,7 +259,11 @@ fun AITutorScreen(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("RelayNet AI Tutor is solving with academic grounding...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = if (isScanningImage) "Scanning textbook problem with Nemotron..." else "RelayNet AI Tutor is solving with academic grounding...",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -341,11 +402,23 @@ fun TutorMessageBubble(
                             Text("RelayNet AI Tutor", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                         }
 
-                        // Origin Badge: [Offline Grounded] vs [Cloud AI]
+                        // Origin Badge: [Cloud AI] Nemotron-3-Super Vision & Reasoning vs [Offline Grounded] vs [Cloud AI]
                         val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
-                        val badgeText = if (isOfflineGrounded) "[Offline Grounded]" else "[Cloud AI]"
-                        val badgeBg = if (isOfflineGrounded) SuccessGreen.copy(alpha = 0.15f) else AccentCyan.copy(alpha = 0.15f)
-                        val badgeTextColor = if (isOfflineGrounded) SuccessGreen else AccentCyan
+                        val badgeText = when {
+                            message.isNemotronReasoning -> "[Cloud AI] Nemotron-3-Super Vision & Reasoning"
+                            isOfflineGrounded -> "[Offline Grounded]"
+                            else -> "[Cloud AI]"
+                        }
+                        val badgeBg = when {
+                            message.isNemotronReasoning -> Color(0xFF6B21A8).copy(alpha = 0.15f)
+                            isOfflineGrounded -> SuccessGreen.copy(alpha = 0.15f)
+                            else -> AccentCyan.copy(alpha = 0.15f)
+                        }
+                        val badgeTextColor = when {
+                            message.isNemotronReasoning -> Color(0xFF9333EA)
+                            isOfflineGrounded -> SuccessGreen
+                            else -> AccentCyan
+                        }
 
                         Box(
                             modifier = Modifier
