@@ -54,7 +54,10 @@ class SettingsViewModel(
 
     // NVIDIA NIM / Cloud AI API Key State
     private val apiPrefs = context.getSharedPreferences("relaynet_api_prefs", Context.MODE_PRIVATE)
-    private val _nvidiaApiKey = MutableStateFlow(apiPrefs.getString("nvidia_api_key", "") ?: "")
+    private val defaultNvidiaKey = com.nmiet.app.BuildConfig.NVIDIA_API_KEY.takeIf { !it.startsWith("YOUR_") }.orEmpty()
+    private val _nvidiaApiKey = MutableStateFlow(
+        apiPrefs.getString("nvidia_api_key", null)?.takeIf { it.isNotBlank() } ?: defaultNvidiaKey
+    )
     val nvidiaApiKey: StateFlow<String> = _nvidiaApiKey.asStateFlow()
 
     init {
