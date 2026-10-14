@@ -11,6 +11,6 @@ data class CurriculumNode(
     val topicTitleEnglish: String,
     val learningObjectiveOdia: String,
     val learningObjectiveEnglish: String,
-    val packId: String,
+    val packId: String? = null,
     val isAvailableOffline: Boolean = true
 )

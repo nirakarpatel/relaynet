@@ -2,19 +2,24 @@ package com.nmiet.app.ui.screens.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,21 +45,39 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.permissions.NearbyPermissionManager
@@ -70,13 +93,20 @@ fun SettingsScreen(
     onOpenLocalAiPlayground: () -> Unit = {}
 ) {
     val profile by viewModel.profile.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val hasPermissions by viewModel.hasPermissions.collectAsState()
     val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
 
     val audioCacheSizeMb by viewModel.audioCacheSizeMb.collectAsState()
+    val diagramsCacheSizeMb by viewModel.diagramsCacheSizeMb.collectAsState()
     val coreDataSizeMb by viewModel.coreDataSizeMb.collectAsState()
     val pendingSyncAttemptsCount by viewModel.pendingSyncAttemptsCount.collectAsState()
+    val configuredApiKey by viewModel.nvidiaApiKey.collectAsState()
+    var apiKeyInput by remember(configuredApiKey) { mutableStateOf(configuredApiKey) }
+    var isApiKeyVisible by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -85,6 +115,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             AppTopBar(
                 title = "Settings & Evaluator Controls",
@@ -194,7 +225,17 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "• Cached Audio Assets:", fontSize = 13.sp)
+                        Text(text = "• Generated Flowcharts & Diagrams:", fontSize = 13.sp)
+                        Text(text = "${"%.1f".format(diagramsCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "• Cached Audio:", fontSize = 13.sp)
                         Text(text = "${"%.1f".format(audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = WarningAmber)
                     }
 
@@ -206,20 +247,31 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + audioCacheSizeMb)} MB",
+                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)} MB",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
 
-                        // Clear Audio Cache button
-                        Button(
-                            onClick = { viewModel.clearAudioCache() },
-                            enabled = audioCacheSizeMb > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear Audio Cache", fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { viewModel.clearDiagramCache() },
+                                enabled = diagramsCacheSizeMb > 0,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("Clear Diagrams", fontSize = 11.sp)
+                            }
+
+                            // Clear Audio Cache button
+                            Button(
+                                onClick = { viewModel.clearAudioCache() },
+                                enabled = audioCacheSizeMb > 0,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Clear Audio", fontSize = 11.sp)
+                            }
                         }
                     }
 
@@ -260,7 +312,11 @@ fun SettingsScreen(
                         ) {
                             Icon(imageVector = Icons.Default.CloudSync, contentDescription = null, tint = PrimaryBlue)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
                                 Text(
                                     text = "$pendingSyncAttemptsCount Quiz attempts pending sync",
                                     fontWeight = FontWeight.Bold,
@@ -279,7 +335,10 @@ fun SettingsScreen(
 
                         OutlinedButton(
                             onClick = { viewModel.syncPendingAttempts() },
-                            modifier = Modifier.padding(start = 8.dp),
+                            modifier = Modifier
+                                .wrapContentWidth()
+                                .defaultMinSize(minHeight = 44.dp)
+                                .padding(start = 8.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             enabled = syncStatus.isOnline && pendingSyncAttemptsCount > 0
                         ) {
@@ -289,7 +348,12 @@ fun SettingsScreen(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Sync Now", maxLines = 1)
+                            Text(
+                                text = "Sync Now",
+                                maxLines = 1,
+                                softWrap = false,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }
@@ -298,8 +362,15 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             // Section 4: Learner Profile & Curriculum Selection
+            val profileSettingsTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Learner Profile Settings"
+                AppLanguage.ODIA_ONLY -> "ଶିକ୍ଷାର୍ଥୀ ପ୍ରୋଫାଇଲ୍ ସେଟିଙ୍ଗ୍ (ଭାଷା ପସନ୍ଦ)"
+                AppLanguage.HINDI_ONLY -> "शिक्षार्थी प्रोफ़ाइल सेटिंग्स (भाषा चयन)"
+                AppLanguage.BILINGUAL_EN_HI -> "Learner Profile Settings (शिक्षार्थी प्रोफ़ाइल / भाषा चयन)"
+                AppLanguage.BILINGUAL_EN_OR -> "Learner Profile Settings (ଭାଷା ପସନ୍ଦ)"
+            }
             Text(
-                text = "Learner Profile Settings (ପ୍ରୋଫାଇଲ୍)",
+                text = profileSettingsTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -314,49 +385,121 @@ fun SettingsScreen(
                     Text(text = "Educational Board:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Board.entries.forEach { b ->
                             FilterChip(
                                 selected = profile.board == b,
                                 onClick = { viewModel.updateBoard(b) },
-                                label = { Text(b.code, fontSize = 11.sp) }
+                                label = {
+                                    Text(
+                                        text = b.code,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(text = "Class Grade (ଶ୍ରେଣୀ):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    val classGradeLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Class Grade:"
+                        AppLanguage.ODIA_ONLY -> "Class Grade (ଶ୍ରେଣୀ):"
+                        AppLanguage.HINDI_ONLY -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_HI -> "Class Grade (कक्षा):"
+                        AppLanguage.BILINGUAL_EN_OR -> "Class Grade (ଶ୍ରେଣୀ):"
+                    }
+                    Text(text = classGradeLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(6, 7, 8, 9, 10).forEach { grade ->
                             FilterChip(
-                                selected = profile.classGrade == grade,
+                                selected = profile.gradeInt == grade || profile.classGrade == "Class $grade",
                                 onClick = { viewModel.updateGrade(grade) },
-                                label = { Text("Class $grade", fontSize = 11.sp) }
+                                label = {
+                                    Text(
+                                        text = "Class $grade",
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(text = "Preferred Language (ଭାଷା ପସନ୍ଦ):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
+                    Text(
+                        text = "Preferred Language (ଭାଷା ପସନ୍ଦ / भाषा चयन):",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        AppLanguage.entries.forEach { lang ->
-                            FilterChip(
-                                selected = profile.preferredLanguage == lang,
-                                onClick = { viewModel.updateLanguage(lang) },
-                                label = { Text(lang.displayName, fontSize = 11.sp) }
-                            )
+                        val languageOptions = listOf(
+                            AppLanguage.ENGLISH_ONLY to "English",
+                            AppLanguage.ODIA_ONLY to "ଓଡ଼ିଆ (Odia)",
+                            AppLanguage.HINDI_ONLY to "हिंदी (Hindi)",
+                            AppLanguage.BILINGUAL_EN_HI to "English + हिंदी (Bilingual)",
+                            AppLanguage.BILINGUAL_EN_OR to "English + ଓଡ଼ିଆ (Bilingual)"
+                        )
+
+                        languageOptions.forEach { (lang, label) ->
+                            val isSelected = currentLanguage == lang
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.updateLanguage(lang) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                ),
+                                border = if (isSelected)
+                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                                else null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -473,7 +616,8 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }

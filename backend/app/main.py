@@ -19,14 +19,22 @@ from app.curriculum_catalog import (
 )
 from app.tutor_agent import tutor_agent
 from app.pack_builder import build_photosynthesis_pack_zip, compute_file_sha256
-from app.teacher_pipeline import process_teacher_lecture
+from fastapi.staticfiles import StaticFiles
 from app.routes.tutor import router as tutor_router
+from app.routes.diagrams import router as diagrams_router
+from services.pack_generator import build_section9_learning_pack
 
 app = FastAPI(
     title="RelayNet Backend API",
     description="Multilingual, AI-Powered Offline Learning Backend for Classes 6–10 (CBSE, Odisha State Board, ICSE)",
     version="1.2.0"
 )
+
+# Mount static directory for serving generated diagrams and learning packs
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+os.makedirs(os.path.join(STATIC_DIR, "diagrams"), exist_ok=True)
+os.makedirs(os.path.join(STATIC_DIR, "packs"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -109,6 +117,7 @@ def download_content_pack(pack_id: str):
     raise HTTPException(status_code=404, detail="Requested pack ZIP not found.")
 
 app.include_router(tutor_router)
+app.include_router(diagrams_router)
 
 @app.post("/notes/generate")
 def generate_revision_notes(req: dict = None):
@@ -236,11 +245,16 @@ def transcribe_lecture(req: LectureTranscriptionRequest):
 @app.post("/teacher/content-packs/publish")
 def publish_content_pack(pack_id: str):
     """
-    Approves and publishes a reviewed learning pack for student distribution.
+    Approves and compiles a verified Section 9 learning pack with integrated
+    NVIDIA NIM FLUX.2 Klein visual diagrams.
     """
+    pack_res = build_section9_learning_pack(pack_id=pack_id)
     return {
         "pack_id": pack_id,
         "status": "PUBLISHED_VERIFIED",
-        "sha256": compute_file_sha256(_SAMPLE_ZIP_PATH) if os.path.exists(_SAMPLE_ZIP_PATH) else "verified",
-        "message": "Pack is now ready for online download and P2P Bluetooth transfer."
+        "sha256": pack_res["sha256"],
+        "diagram_file": pack_res["diagram_file"],
+        "diagram_url": pack_res["public_diagram_url"],
+        "zip_size_bytes": pack_res["size_bytes"],
+        "message": "Pack with high-resolution visual flowchart is now ready for online download and P2P Bluetooth transfer."
     }

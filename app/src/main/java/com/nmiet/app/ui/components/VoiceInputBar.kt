@@ -279,15 +279,7 @@ fun VoiceInputBar(
             ) {
                 // Image Attachment Button positioned directly to the left of the Mic icon
                 IconButton(
-                    onClick = {
-                        try {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        } catch (_: Exception) {
-                            cameraLauncher.launch(null)
-                        }
-                    },
+                    onClick = { showSourceDialog = true },
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)

@@ -4,13 +4,19 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,6 +80,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.TutorMessage
 import com.nmiet.app.domain.model.TutorSender
 import com.nmiet.app.ui.components.AppTopBar
@@ -88,12 +95,15 @@ fun AITutorScreen(
     viewModel: AITutorViewModel
 ) {
     val context = LocalContext.current
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
     val attachedImage by viewModel.attachedImage.collectAsState()
     val isRecording by viewModel.isRecordingVoice.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val isScanningImage by viewModel.isScanningImage.collectAsState()
+    val offlineNotice by viewModel.offlineNotice.collectAsState()
 
     val listState = rememberLazyListState()
 
@@ -103,18 +113,42 @@ fun AITutorScreen(
         }
     }
 
-    // One-Tap Suggestion Chips
-    val sampleQueries = listOf(
-        "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
-        "Where does Oxygen come from in photosynthesis?",
-        "Explain Light vs Dark Reactions in Odia",
-        "Who is Salman Khan?" // Test guardrail refusal
-    )
+    // Dynamic Screen Header
+    val headerTitle = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> "AI Academic Tutor"
+        AppLanguage.ODIA_ONLY -> "AI ଶିକ୍ଷା ସାଥୀ"
+        AppLanguage.HINDI_ONLY -> "AI अध्ययन शिक्षक"
+        AppLanguage.BILINGUAL_EN_HI, AppLanguage.BILINGUAL_EN_OR -> "Bilingual AI Tutor"
+    }
+
+    // One-Tap Suggestion Chips based on Language Mode
+    val sampleQueries = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> listOf(
+            "Explain Photosynthesis",
+            "Where does Oxygen come from in photosynthesis?"
+        )
+        AppLanguage.ODIA_ONLY -> listOf(
+            "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
+            "ଆଲୋକ ଶ୍ଳେଷଣରେ ଅମ୍ଳଜାନ କେଉଁଠାରୁ ଆସେ?"
+        )
+        AppLanguage.HINDI_ONLY -> listOf(
+            "प्रकाश संश्लेषण समझाइए",
+            "प्रकाश संश्लेषण में ऑक्सीजन कहाँ से निकलती है?"
+        )
+        AppLanguage.BILINGUAL_EN_HI -> listOf(
+            "Explain Photosynthesis",
+            "प्रकाश संश्लेषण में ऑक्सीजन कहाँ से निकलती है?"
+        )
+        AppLanguage.BILINGUAL_EN_OR -> listOf(
+            "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
+            "Where does Oxygen come from in photosynthesis?"
+        )
+    }
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Bilingual AI Tutor",
+                title = headerTitle,
                 isOnline = syncStatus.isOnline
             )
         }
@@ -151,6 +185,55 @@ fun AITutorScreen(
                 }
             }
 
+            // Offline Notification Banner for Photo Scan
+            AnimatedVisibility(
+                visible = offlineNotice != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                if (offlineNotice != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudOff,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = offlineNotice!!,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.weight(1f),
+                                lineHeight = 16.sp
+                            )
+                            IconButton(
+                                onClick = { viewModel.clearOfflineNotice() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Chat Messages Stream
             LazyColumn(
                 state = listState,
@@ -161,7 +244,11 @@ fun AITutorScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { it.id }) { msg ->
-                    TutorMessageBubble(message = msg, isOnlineContext = syncStatus.isOnline)
+                    TutorMessageBubble(
+                        message = msg,
+                        isOnlineContext = syncStatus.isOnline,
+                        currentLanguage = currentLanguage
+                    )
                 }
 
                 if (isGenerating) {
@@ -172,7 +259,11 @@ fun AITutorScreen(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("RelayNet AI Tutor is solving with academic grounding...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = if (isScanningImage) "Scanning textbook problem with Nemotron..." else "RelayNet AI Tutor is solving with academic grounding...",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -184,6 +275,13 @@ fun AITutorScreen(
             }
 
             // One-tap suggestion chips
+            val attachChipLabel = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "📸 Attach Diagram"
+                AppLanguage.ODIA_ONLY -> "📸 ଚିତ୍ର ସଂଲଗ୍ନ କରନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "📸 चित्र संलग्न करें"
+                AppLanguage.BILINGUAL_EN_HI -> "📸 Attach Diagram (चित्र)"
+                AppLanguage.BILINGUAL_EN_OR -> "📸 Attach Diagram (ଚିତ୍ର)"
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -193,7 +291,7 @@ fun AITutorScreen(
             ) {
                 SuggestionChip(
                     onClick = { viewModel.attachSampleTextbookPhoto() },
-                    label = { Text("📸 Attach Diagram (ଚିତ୍ର)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
+                    label = { Text(attachChipLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
                 )
                 sampleQueries.forEach { query ->
                     SuggestionChip(
@@ -220,7 +318,11 @@ fun AITutorScreen(
 }
 
 @Composable
-fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
+fun TutorMessageBubble(
+    message: TutorMessage,
+    isOnlineContext: Boolean,
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR
+) {
     val isUser = message.sender == TutorSender.USER
 
     Row(
@@ -229,6 +331,20 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
     ) {
         // Amber warning card if query was out of syllabus & rejected by guardrail
         if (!message.isStudyRelated) {
+            val guardrailTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Study-Only Guardrail Triggered"
+                AppLanguage.ODIA_ONLY -> "କେବଳ ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା ନିୟମ"
+                AppLanguage.HINDI_ONLY -> "केवल अध्ययन सुरक्षा नियम"
+                AppLanguage.BILINGUAL_EN_HI -> "Study Guardrail (अध्ययन सुरक्षा)"
+                AppLanguage.BILINGUAL_EN_OR -> "Study Guardrail (ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା)"
+            }
+            val guardrailMsg = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "I can only answer academic curriculum questions."
+                AppLanguage.ODIA_ONLY -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି।"
+                AppLanguage.HINDI_ONLY -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ।"
+                AppLanguage.BILINGUAL_EN_HI -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ। (I can only answer academic curriculum questions)."
+                AppLanguage.BILINGUAL_EN_OR -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions)."
+            }
             Card(
                 modifier = Modifier.fillMaxWidth(0.92f),
                 shape = RoundedCornerShape(14.dp),
@@ -245,7 +361,7 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Study-Only Guardrail Triggered",
+                            text = guardrailTitle,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = WarningAmber
@@ -253,21 +369,12 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions).",
+                        text = guardrailMsg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 20.sp
                     )
-                    if (message.textOdia.isNotBlank() && !message.textOdia.contains("ମୁଁ କେବଳ ପାଠପଢ଼ା")) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = message.textOdia,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 17.sp
-                        )
-                    }
                 }
             }
             return@Row
@@ -295,11 +402,23 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                             Text("RelayNet AI Tutor", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                         }
 
-                        // Origin Badge: [Offline Grounded] vs [Cloud AI]
+                        // Origin Badge: [Cloud AI] Nemotron-3-Super Vision & Reasoning vs [Offline Grounded] vs [Cloud AI]
                         val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
-                        val badgeText = if (isOfflineGrounded) "[Offline Grounded]" else "[Cloud AI]"
-                        val badgeBg = if (isOfflineGrounded) SuccessGreen.copy(alpha = 0.15f) else AccentCyan.copy(alpha = 0.15f)
-                        val badgeTextColor = if (isOfflineGrounded) SuccessGreen else AccentCyan
+                        val badgeText = when {
+                            message.isNemotronReasoning -> "[Cloud AI] Nemotron-3-Super Vision & Reasoning"
+                            isOfflineGrounded -> "[Offline Grounded]"
+                            else -> "[Cloud AI]"
+                        }
+                        val badgeBg = when {
+                            message.isNemotronReasoning -> Color(0xFF6B21A8).copy(alpha = 0.15f)
+                            isOfflineGrounded -> SuccessGreen.copy(alpha = 0.15f)
+                            else -> AccentCyan.copy(alpha = 0.15f)
+                        }
+                        val badgeTextColor = when {
+                            message.isNemotronReasoning -> Color(0xFF9333EA)
+                            isOfflineGrounded -> SuccessGreen
+                            else -> AccentCyan
+                        }
 
                         Box(
                             modifier = Modifier
@@ -332,17 +451,37 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Odia text
+                val primaryText = if (isUser) {
+                    message.textEnglish.ifBlank { message.textOdia }
+                } else {
+                    when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> message.textEnglish
+                        AppLanguage.ODIA_ONLY -> message.textOdia.ifBlank { message.textEnglish }
+                        AppLanguage.HINDI_ONLY -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+                        AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+                        AppLanguage.BILINGUAL_EN_OR -> message.textOdia.ifBlank { message.textEnglish }
+                    }
+                }
+
+                val secondaryText = if (!isUser) {
+                    when (currentLanguage) {
+                        AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank() && message.textEnglish.isNotBlank()) message.textEnglish else null
+                        AppLanguage.BILINGUAL_EN_OR -> if (message.textOdia.isNotBlank() && message.textOdia != message.textEnglish) message.textEnglish else null
+                        else -> null
+                    }
+                } else null
+
+                // Primary Message Text
                 Text(
-                    text = message.textOdia,
+                    text = primaryText,
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
                     fontWeight = if (isUser) FontWeight.Medium else FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                // English text for Tutor messages (Bilingual support)
-                if (!isUser && message.textEnglish != message.textOdia) {
+                // English text translation block beneath for Bilingual modes
+                if (secondaryText != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -354,7 +493,7 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                         Column {
                             Text("English Translation:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Text(
-                                text = message.textEnglish,
+                                text = secondaryText,
                                 fontSize = 12.sp,
                                 lineHeight = 17.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

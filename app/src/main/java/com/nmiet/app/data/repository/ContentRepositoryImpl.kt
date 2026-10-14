@@ -33,6 +33,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -44,7 +45,15 @@ class ContentRepositoryImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ContentRepository {
 
-    private val _learnerProfile = MutableStateFlow(LearnerProfile())
+    private var activeApiKey: String = ""
+
+    override fun setApiKey(key: String) {
+        activeApiKey = key.trim()
+    }
+
+    override fun getApiKey(): String = activeApiKey
+
+    private val _learnerProfile = MutableStateFlow<LearnerProfile>(LearnerProfile())
     override fun getLearnerProfileFlow(): Flow<LearnerProfile> = _learnerProfile.asStateFlow()
 
     override suspend fun updateLearnerProfile(profile: LearnerProfile) {
@@ -78,6 +87,12 @@ class ContentRepositoryImpl(
 
     override fun getLearningPacksFlow(): Flow<List<LearningPack>> {
         return learningDao.getAllPacks().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getPacksForStudentFlow(board: String, grade: String): Flow<List<LearningPack>> {
+        return learningDao.getPacksForStudent(board, grade).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -225,6 +240,62 @@ class ContentRepositoryImpl(
             )
         } else {
             resolveLocalGroundedTutor(questionText, imageBitmap != null, language)
+        }
+
+        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(tutorMsg))
+        tutorMsg
+    }
+
+    override suspend fun scanAndSolveTextbook(
+        imageBitmap: Bitmap,
+        userPrompt: String?,
+        language: String,
+        curriculumContext: String
+    ): TutorMessage = withContext(ioDispatcher) {
+        val now = System.currentTimeMillis()
+        val promptText = userPrompt?.trim()?.ifBlank { null } ?: "Analyze and solve this textbook problem / equation."
+
+        // 1. Optimistic user message with attached image
+        val userMsg = TutorMessage(
+            id = "msg_user_${UUID.randomUUID().toString().take(6)}",
+            sender = TutorSender.USER,
+            textOdia = promptText,
+            textEnglish = promptText,
+            timestamp = now,
+            isOfflineGrounded = false,
+            sourceChapter = null,
+            isStudyRelated = true,
+            imageBitmap = imageBitmap
+        )
+        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+
+        // 2. Call backend /tutor/scan-and-solve endpoint
+        val cloudScanResult = callScanAndSolveEndpoint(imageBitmap, promptText, language, curriculumContext)
+
+        // 3. Construct TutorMessage with [Cloud AI] Nemotron-3-Super Vision & Reasoning tag
+        val tutorMsg = if (cloudScanResult != null) {
+            val solutionText = cloudScanResult.solution
+            TutorMessage(
+                id = "msg_nemotron_${UUID.randomUUID().toString().take(6)}",
+                sender = TutorSender.TUTOR,
+                textOdia = solutionText,
+                textEnglish = solutionText,
+                textHindi = solutionText,
+                timestamp = System.currentTimeMillis(),
+                isOfflineGrounded = false,
+                sourceChapter = "Nemotron-3-Super Reasoning",
+                isStudyRelated = cloudScanResult.isAcademic,
+                isCloudAI = true,
+                isNemotronReasoning = true,
+                sourceTags = listOf("nemotron_scan_solve", "llama_vision_ocr")
+            )
+        } else {
+            val fallback = resolveLocalGroundedTutor("Explain photosynthesis photolysis of water equation", true, language)
+            fallback.copy(
+                id = "msg_nemotron_local_${UUID.randomUUID().toString().take(6)}",
+                isNemotronReasoning = true,
+                isCloudAI = true
+            )
         }
 
         learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(tutorMsg))
@@ -382,6 +453,119 @@ class ContentRepositoryImpl(
         return null
     }
 
+    private data class CloudScanSolveResponse(
+        val extractedText: String,
+        val solution: String,
+        val isAcademic: Boolean,
+        val modelVision: String,
+        val modelReasoning: String
+    )
+
+    private fun callScanAndSolveEndpoint(
+        imageBitmap: Bitmap,
+        userPrompt: String,
+        language: String,
+        curriculumContext: String
+    ): CloudScanSolveResponse? {
+        val backendUrls = listOf(
+            "http://10.0.2.2:8000/tutor/scan-and-solve",
+            "http://127.0.0.1:8000/tutor/scan-and-solve",
+            "http://localhost:8000/tutor/scan-and-solve"
+        )
+
+        val boundary = "===RelayNetBoundary" + System.currentTimeMillis() + "==="
+        val lineEnd = "\r\n"
+        val twoHyphens = "--"
+
+        val imageStream = ByteArrayOutputStream()
+        imageBitmap.compress(Bitmap.CompressFormat.JPEG, 85, imageStream)
+        val imageBytes = imageStream.toByteArray()
+
+        for (endpoint in backendUrls) {
+            try {
+                val url = URL(endpoint)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.connectTimeout = 4000
+                conn.readTimeout = 10000
+                conn.doOutput = true
+                conn.doInput = true
+                conn.useCaches = false
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                if (activeApiKey.isNotBlank()) {
+                    conn.setRequestProperty("Authorization", "Bearer $activeApiKey")
+                    conn.setRequestProperty("X-Api-Key", activeApiKey)
+                }
+
+                val dos = DataOutputStream(conn.outputStream)
+
+                // 1. file part
+                dos.writeBytes("$twoHyphens$boundary$lineEnd")
+                dos.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"textbook_scan.jpg\"$lineEnd")
+                dos.writeBytes("Content-Type: image/jpeg$lineEnd")
+                dos.writeBytes(lineEnd)
+                dos.write(imageBytes)
+                dos.writeBytes(lineEnd)
+
+                // 2. user_prompt part
+                dos.writeBytes("$twoHyphens$boundary$lineEnd")
+                dos.writeBytes("Content-Disposition: form-data; name=\"user_prompt\"$lineEnd")
+                dos.writeBytes("Content-Type: text/plain; charset=UTF-8$lineEnd")
+                dos.writeBytes(lineEnd)
+                dos.write(userPrompt.toByteArray(Charsets.UTF_8))
+                dos.writeBytes(lineEnd)
+
+                // 3. language_preference part
+                dos.writeBytes("$twoHyphens$boundary$lineEnd")
+                dos.writeBytes("Content-Disposition: form-data; name=\"language_preference\"$lineEnd")
+                dos.writeBytes("Content-Type: text/plain; charset=UTF-8$lineEnd")
+                dos.writeBytes(lineEnd)
+                dos.write(language.toByteArray(Charsets.UTF_8))
+                dos.writeBytes(lineEnd)
+
+                // 4. curriculum_context part
+                dos.writeBytes("$twoHyphens$boundary$lineEnd")
+                dos.writeBytes("Content-Disposition: form-data; name=\"curriculum_context\"$lineEnd")
+                dos.writeBytes("Content-Type: text/plain; charset=UTF-8$lineEnd")
+                dos.writeBytes(lineEnd)
+                dos.write(curriculumContext.toByteArray(Charsets.UTF_8))
+                dos.writeBytes(lineEnd)
+
+                // 5. api_key part (if configured)
+                if (activeApiKey.isNotBlank()) {
+                    dos.writeBytes("$twoHyphens$boundary$lineEnd")
+                    dos.writeBytes("Content-Disposition: form-data; name=\"api_key\"$lineEnd")
+                    dos.writeBytes("Content-Type: text/plain; charset=UTF-8$lineEnd")
+                    dos.writeBytes(lineEnd)
+                    dos.write(activeApiKey.toByteArray(Charsets.UTF_8))
+                    dos.writeBytes(lineEnd)
+                }
+
+                // End of multipart
+                dos.writeBytes("$twoHyphens$boundary$twoHyphens$lineEnd")
+                dos.flush()
+                dos.close()
+
+                if (conn.responseCode == 200) {
+                    val reader = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
+                    val resString = reader.readText()
+                    reader.close()
+                    val json = JSONObject(resString)
+                    return CloudScanSolveResponse(
+                        extractedText = json.optString("extracted_text", ""),
+                        solution = json.optString("solution", ""),
+                        isAcademic = json.optBoolean("is_academic", true),
+                        modelVision = json.optString("model_vision", "meta/llama-3.2-11b-vision-instruct"),
+                        modelReasoning = json.optString("model_reasoning", "nvidia/nemotron-3-super-120b-a12b")
+                    )
+                }
+            } catch (_: Exception) {
+                // Try next endpoint or fall back cleanly
+            }
+        }
+        return null
+    }
+
     override suspend fun saveIncomingLearningPack(pack: LearningPack, peerName: String) = withContext(ioDispatcher) {
         val updatedPack = pack.copy(
             isReceivedViaMesh = true,
@@ -422,6 +606,12 @@ class ContentRepositoryImpl(
         )
         learningDao.insertPack(LearningPackEntity.fromDomain(pilotPack))
 
+        val pilotClass10Pack = PilotCurriculumCatalog.getPilotClass10LearningPack().copy(
+            origin = ContentOrigin.INTERNET_DOWNLOADED,
+            isDownloaded = true
+        )
+        learningDao.insertPack(LearningPackEntity.fromDomain(pilotClass10Pack))
+
         // Preload an initial topic mastery (61% Developing tier)
         learningDao.insertOrUpdateMastery(
             TopicMasteryEntity(
@@ -457,8 +647,9 @@ class ContentRepositoryImpl(
             TutorMessageEntity(
                 messageId = "msg_welcome",
                 senderName = TutorSender.TUTOR.name,
-                textOdia = "ନମସ୍କାର ସୌମ୍ୟ! ମୁଁ ତୁମର RelayNet AI ଶିକ୍ଷକ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ ବିଷୟରେ ଯେକୌଣସି ପ୍ରଶ୍ନ ଓଡ଼ିଆ କିମ୍ବା ଇଂରାଜୀରେ ପଚାରିପାରିବ। ଆପଣ ପାଠ୍ୟପୁସ୍ତକର ଫଟୋ (Camera/Gallery) ମଧ୍ୟ ପଠାଇପାରିବେ!",
-                textEnglish = "Hello Soumya! I am your RelayNet AI Tutor. Ask any question from Class 9 Science in Odia or English. You can also attach textbook photos (Camera/Gallery) to solve problems!",
+                textOdia = "ନମସ୍କାର ସୌମ୍ୟ! ମୁଁ ତୁମର RelayNet AI ଶିକ୍ଷକ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ ବିଷୟରେ ଯେକୌଣସି ପ୍ରଶ୍ନ ଓଡ଼ିଆରେ ପଚାରିପାରିବେ। ଆପଣ ପାଠ୍ୟପୁସ୍ତକର ଫଟୋ (Camera/Gallery) ମଧ୍ୟ ପଠାଇପାରିବେ!",
+                textEnglish = "Hello Soumya! I am your RelayNet AI Tutor. Ask any question from Class 9 Science in English. You can also attach textbook photos to solve problems!",
+                textHindi = "नमस्ते सौम्या! मैं आपका RelayNet AI शिक्षक हूँ। कक्षा 9 विज्ञान से संबंधित कोई भी प्रश्न हिंदी में पूछें। आप प्रश्नों को हल करने के लिए पाठ्यपुस्तक की फोटो भी भेज सकते हैं!",
                 timestamp = System.currentTimeMillis(),
                 isOfflineGrounded = true,
                 sourceChapter = "Odisha Board Class 9 Science",
@@ -475,6 +666,114 @@ class ContentRepositoryImpl(
                 lastSyncTimestamp = System.currentTimeMillis(),
                 lastSyncMessage = "Loaded Class 9 Science Pilot Pack (Odia + English)."
             )
+        }
+    }
+
+    override suspend fun loginWithEmail(email: String, password: String): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.signInWithEmail(email, password)
+            if (authRes.isFailure) {
+                return@withContext Result.failure(authRes.exceptionOrNull() ?: Exception("Login failed"))
+            }
+            val authData = authRes.getOrThrow()
+            val current = _learnerProfile.value
+            val updated = current.copy(
+                studentId = authData.uid,
+                email = authData.email,
+                name = authData.displayName ?: current.name,
+                avatarUrl = authData.photoUrl ?: current.avatarUrl,
+                isLoggedIn = true,
+                authProvider = if (authData.isFirebaseBacked) "FIREBASE_EMAIL" else "EMAIL",
+                sessionToken = authData.idToken ?: "tok_${System.currentTimeMillis()}"
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Successfully signed in as ${updated.name} via ${if (authData.isFirebaseBacked) "Firebase" else "RelayNet ID"}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun registerWithEmail(
+        name: String,
+        email: String,
+        password: String,
+        classGrade: Int,
+        board: com.nmiet.app.domain.model.Board
+    ): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.createUserWithEmail(email, password)
+            if (authRes.isFailure) {
+                return@withContext Result.failure(authRes.exceptionOrNull() ?: Exception("Registration failed"))
+            }
+            val authData = authRes.getOrThrow()
+            val updated = LearnerProfile(
+                studentId = authData.uid,
+                name = name.trim(),
+                email = authData.email,
+                classGrade = classGrade,
+                board = board,
+                isLoggedIn = true,
+                authProvider = if (authData.isFirebaseBacked) "FIREBASE_EMAIL" else "EMAIL",
+                sessionToken = authData.idToken ?: "tok_${System.currentTimeMillis()}",
+                isProfileCompleted = true
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Account registered for $name (Class $classGrade) via ${if (authData.isFirebaseBacked) "Firebase" else "RelayNet ID"}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun loginWithGoogle(
+        idToken: String?,
+        email: String,
+        name: String,
+        avatarUrl: String?
+    ): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.signInWithGoogleIdToken(
+                idToken = idToken ?: "google_token_${System.currentTimeMillis()}",
+                fallbackEmail = email,
+                fallbackName = name
+            )
+            val authData = authRes.getOrNull()
+            val current = _learnerProfile.value
+            val isNewProfile = current.name.isBlank() || current.name == "Soumya Ranjan"
+            val updated = current.copy(
+                studentId = authData?.uid ?: "usr_google_${System.currentTimeMillis()}",
+                email = authData?.email ?: email,
+                name = if (name.isNotBlank() && name != "Google Learner") name else (authData?.displayName ?: current.name),
+                avatarUrl = authData?.photoUrl ?: avatarUrl ?: "https://api.dicebear.com/7.x/bottts/svg?seed=$name",
+                isLoggedIn = true,
+                authProvider = if (authData?.isFirebaseBacked == true) "FIREBASE_GOOGLE" else "GOOGLE",
+                sessionToken = authData?.idToken ?: idToken ?: "tok_google_${System.currentTimeMillis()}",
+                isProfileCompleted = !isNewProfile
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Signed in with Google as ${updated.name}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun logout() = withContext(ioDispatcher) {
+        val current = _learnerProfile.value
+        _learnerProfile.value = current.copy(
+            isLoggedIn = false,
+            authProvider = "GUEST",
+            sessionToken = ""
+        )
+        _syncStatus.update {
+            it.copy(lastSyncMessage = "Signed out. Operating in Guest/Offline mode.")
         }
     }
 

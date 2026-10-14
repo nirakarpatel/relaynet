@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.nmiet.app.data.local.AppDatabase
+import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.repository.ContentRepositoryImpl
 import com.nmiet.app.navigation.AppNavHost
 import com.nmiet.app.nearby.BluetoothTransferManager
@@ -41,11 +42,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 3. Initialize Transfer Managers with pack ingestion callback
+        // 3. Initialize Transfer Managers with pack & note ingestion callback
         val demoTransferManager = DemoTransferManager(
             scope = lifecycleScope,
             onPackReceivedCallback = { pack, peerName ->
                 repository.saveIncomingLearningPack(pack, peerName)
+            },
+            onNoteReceivedCallback = { note, peerName ->
+                repository.saveGeneratedNote(note)
             }
         )
 
@@ -54,6 +58,12 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             onPackReceivedCallback = { pack, peerName ->
                 repository.saveIncomingLearningPack(pack, peerName)
+            },
+            onNoteReceivedCallback = { note, peerName ->
+                repository.saveGeneratedNote(note)
+            },
+            packLookupProvider = { packId ->
+                repository.getPackByIdOnce(packId)
             }
         )
 
@@ -75,8 +85,9 @@ class MainActivity : ComponentActivity() {
             bluetoothManager = bluetoothTransferManager,
             nearbyManager = googleNearbyManager
         )
-        val masteryViewModel = MasteryViewModel(repository)
-        val settingsViewModel = SettingsViewModel(repository, applicationContext)
+        val masteryViewModel = MasteryViewModel(repository, languageManager)
+        val settingsViewModel = SettingsViewModel(repository, applicationContext, languageManager, userPreferencesRepository)
+        val geminiKeyRotator = com.nmiet.app.data.remote.GeminiKeyRotator.getInstance()
 
         // 5. Mount App Navigation & UI
         setContent {
@@ -91,7 +102,9 @@ class MainActivity : ComponentActivity() {
                         aiTutorViewModel = aiTutorViewModel,
                         nearbyShareViewModel = nearbyShareViewModel,
                         masteryViewModel = masteryViewModel,
-                        settingsViewModel = settingsViewModel
+                        settingsViewModel = settingsViewModel,
+                        languageManager = languageManager,
+                        geminiKeyRotator = geminiKeyRotator
                     )
                 }
             }

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.ContentOrigin
 import com.nmiet.app.domain.model.LearningPack
@@ -70,6 +71,7 @@ fun CurriculumScreen(
     onOpenDownloads: () -> Unit = {},
     onOpenStudyPlanner: () -> Unit = {}
 ) {
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val profile by viewModel.profile.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val selectedBucket by viewModel.selectedBucket.collectAsState()
@@ -82,10 +84,18 @@ fun CurriculumScreen(
     val selectedSubject by viewModel.selectedSubject.collectAsState()
     val curriculumNodes by viewModel.allCurriculumNodes.collectAsState()
 
+    val screenTitle = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> "Curriculum Explorer"
+        AppLanguage.ODIA_ONLY -> "ପାଠ୍ୟକ୍ରମ ଏକ୍ସପ୍ଲୋରର୍"
+        AppLanguage.HINDI_ONLY -> "पाठ्यक्रम एक्सप्लोरर"
+        AppLanguage.BILINGUAL_EN_HI -> "Curriculum Explorer • पाठ्यक्रम"
+        AppLanguage.BILINGUAL_EN_OR -> "Curriculum Explorer • ପାଠ୍ୟକ୍ରମ"
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Curriculum Explorer",
+                title = screenTitle,
                 isOnline = syncStatus.isOnline
             )
         }
@@ -93,8 +103,13 @@ fun CurriculumScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 96.dp // Guaranteed clearance above bottom bar + floating mic
+            )
         ) {
             item {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -123,14 +138,14 @@ fun CurriculumScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "${profile.name} • Class $selectedGrade",
+                                text = "${profile.studentName} • ${profile.classGrade}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                text = "${selectedBoard.displayName} • ${profile.preferredLanguage.displayName}",
-                                fontSize = 11.sp,
+                                text = "${profile.educationalBoard} • ${profile.languageMode.displayName}",
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
                         }
@@ -140,13 +155,35 @@ fun CurriculumScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // MODULE 2: TWO-BUTTON CONTENT BUCKET FILTER ("DOWNLOADED" VS "SHARED")
+                val contentLibraryTitle = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Content Library Buckets:"
+                    AppLanguage.ODIA_ONLY -> "ପାଠ୍ୟକ୍ରମ ସଂଗ୍ରହ:"
+                    AppLanguage.HINDI_ONLY -> "पाठ्यक्रम संग्रह:"
+                    AppLanguage.BILINGUAL_EN_HI -> "Content Library (पाठ्यक्रम संग्रह):"
+                    AppLanguage.BILINGUAL_EN_OR -> "Content Library Buckets (ପାଠ୍ୟକ୍ରମ ସଂଗ୍ରହ):"
+                }
                 Text(
-                    text = "Content Library Buckets (ପାଠ୍ୟକ୍ରମ ସଂଗ୍ରହ):",
+                    text = contentLibraryTitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(6.dp))
+
+                val downloadedBucketText = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "📥 Downloaded"
+                    AppLanguage.ODIA_ONLY -> "📥 ଡାଉନଲୋଡ୍ ହୋଇଥିବା"
+                    AppLanguage.HINDI_ONLY -> "📥 डाउनलोड किया गया"
+                    AppLanguage.BILINGUAL_EN_HI -> "📥 Downloaded (डाउनलोड)"
+                    AppLanguage.BILINGUAL_EN_OR -> "📥 Downloaded (ଡାଉନଲୋଡ୍)"
+                }
+                val sharedBucketText = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "🔄 P2P Shared"
+                    AppLanguage.ODIA_ONLY -> "🔄 ପିଅର୍ ସେୟାର୍ଡ"
+                    AppLanguage.HINDI_ONLY -> "🔄 सहकर्मी साझा"
+                    AppLanguage.BILINGUAL_EN_HI -> "🔄 P2P Shared (सहकर्मी साझा)"
+                    AppLanguage.BILINGUAL_EN_OR -> "🔄 P2P Shared (ପିଅର୍ ସେୟାର୍ଡ)"
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -207,7 +244,7 @@ fun CurriculumScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "📥 Downloaded",
+                                text = downloadedBucketText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = if (isDownloadedSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -275,7 +312,7 @@ fun CurriculumScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "🔄 P2P Shared",
+                                text = sharedBucketText,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = if (isSharedSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -319,44 +356,46 @@ fun CurriculumScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Board, Class, Subject Chips Row
+                // Subject Filter Chips Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Board.entries.forEach { board ->
-                        val isSelected = selectedBoard == board
+
+                    val scienceLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Science"
+                        AppLanguage.ODIA_ONLY -> "ବିଜ୍ଞାନ (Science)"
+                        AppLanguage.HINDI_ONLY -> "विज्ञान (Science)"
+                        AppLanguage.BILINGUAL_EN_HI -> "Science (विज्ञान)"
+                        AppLanguage.BILINGUAL_EN_OR -> "Science (ବିଜ୍ଞାନ)"
+                    }
+                    val mathLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Mathematics"
+                        AppLanguage.ODIA_ONLY -> "ଗଣିତ (Math)"
+                        AppLanguage.HINDI_ONLY -> "गणित (Math)"
+                        AppLanguage.BILINGUAL_EN_HI -> "Mathematics (गणित)"
+                        AppLanguage.BILINGUAL_EN_OR -> "Mathematics (ଗଣିତ)"
+                    }
+
+                    listOf(scienceLabel, mathLabel).forEach { subject ->
+                        val isSelected = (subject == scienceLabel && selectedSubject.contains("Science")) ||
+                                (subject == mathLabel && selectedSubject.contains("Math"))
                         FilterChip(
                             selected = isSelected,
-                            onClick = { viewModel.onBoardSelected(board) },
+                            onClick = {
+                                viewModel.onSubjectSelected(if (subject == scienceLabel) "Science (ବିଜ୍ଞାନ)" else "Mathematics")
+                            },
                             label = {
-                                val labelText = when (board) {
-                                    Board.ODISHA_STATE -> "Odisha BSE"
-                                    Board.CBSE -> "CBSE"
-                                    Board.CISCE_ICSE -> "ICSE"
-                                }
-                                Text(labelText, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                Text(
+                                    text = subject,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
-                        )
-                    }
-
-                    listOf(9, 10).forEach { grade ->
-                        val isSelected = selectedGrade == grade
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.onGradeSelected(grade) },
-                            label = { Text("Class $grade", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
-                        )
-                    }
-
-                    listOf("Science (ବିଜ୍ଞାନ)", "Mathematics").forEach { subject ->
-                        val isSelected = selectedSubject == subject
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.onSubjectSelected(subject) },
-                            label = { Text(subject, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
                         )
                     }
                 }
@@ -462,6 +501,7 @@ fun CurriculumScreen(
             items(packs, key = { it.packId }) { pack ->
                 LearningPackCard(
                     pack = pack,
+                    currentLanguage = currentLanguage,
                     onOpenLesson = { onOpenLesson(pack.packId) },
                     onStartQuiz = { onStartQuiz(pack.packId) },
                     onShareViaBluetooth = onShareViaBluetooth,
@@ -527,7 +567,7 @@ fun CurriculumScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(96.dp))
             }
         }
     }
@@ -536,6 +576,7 @@ fun CurriculumScreen(
 @Composable
 fun LearningPackCard(
     pack: LearningPack,
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR,
     onOpenLesson: () -> Unit,
     onStartQuiz: () -> Unit,
     onShareViaBluetooth: () -> Unit,
@@ -622,9 +663,17 @@ fun LearningPackCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Chapter Title: "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)"
+            // Chapter Title: English: "Chapter 4: Photosynthesis" | Odia: "ଅଧ୍ୟାୟ ୪: ଆଲୋକ ଶ୍ଳେଷଣ" | Hindi: "अध्याय 4: प्रकाश संश्लेषण"
+            val chapterTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> pack.titleEnglish
+                AppLanguage.ODIA_ONLY -> pack.titleOdia
+                AppLanguage.HINDI_ONLY -> if (pack.titleHindi.isNotBlank()) pack.titleHindi else pack.titleEnglish
+                AppLanguage.BILINGUAL_EN_HI -> if (pack.titleHindi.isNotBlank()) "${pack.titleEnglish}\n${pack.titleHindi}" else pack.titleEnglish
+                AppLanguage.BILINGUAL_EN_OR -> pack.titleOdia
+            }
+
             Text(
-                text = pack.titleOdia,
+                text = chapterTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = PrimaryBlue
@@ -632,16 +681,25 @@ fun LearningPackCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Description: English, Odia, and Hindi parallel translations
+            val summaryText = pack.lesson.getSummary(currentLanguage).ifBlank { pack.getTitle(currentLanguage) }
             Text(
-                text = pack.lesson.summaryEnglish.ifBlank { pack.titleEnglish },
+                text = summaryText,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2
+                maxLines = 3
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             // Quick action chips: AI Revision Notes
+            val notesChipLabel = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "📝 AI Notes"
+                AppLanguage.ODIA_ONLY -> "📝 AI ନୋଟ୍"
+                AppLanguage.HINDI_ONLY -> "📝 AI नोट्स"
+                AppLanguage.BILINGUAL_EN_HI -> "📝 AI Notes (नोट्स)"
+                AppLanguage.BILINGUAL_EN_OR -> "📝 AI Notes (ନୋଟ୍)"
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -649,13 +707,35 @@ fun LearningPackCard(
                 FilterChip(
                     selected = false,
                     onClick = onGenerateNotes,
-                    label = { Text("📝 AI Notes (ନୋଟ୍)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
+                    label = { Text(notesChipLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
                 )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             // Action buttons: "Open Lesson", "Take Diagnostic Quiz", and "Share via Bluetooth"
+            val openLessonBtnText = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Open Lesson"
+                AppLanguage.ODIA_ONLY -> "ପାଠ ଖୋଲନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "पाठ खोलें"
+                AppLanguage.BILINGUAL_EN_HI -> "Open Lesson"
+                AppLanguage.BILINGUAL_EN_OR -> "Open Lesson"
+            }
+            val takeQuizBtnText = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Take Quiz"
+                AppLanguage.ODIA_ONLY -> "କୁଇଜ୍ ଦିଅନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "क्विज दें"
+                AppLanguage.BILINGUAL_EN_HI -> "Take Quiz"
+                AppLanguage.BILINGUAL_EN_OR -> "Take Quiz"
+            }
+            val shareP2PBtnText = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Share P2P"
+                AppLanguage.ODIA_ONLY -> "ପିଅର୍ ସେୟାର୍"
+                AppLanguage.HINDI_ONLY -> "शेयर करें"
+                AppLanguage.BILINGUAL_EN_HI -> "Share P2P"
+                AppLanguage.BILINGUAL_EN_OR -> "Share P2P"
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -667,7 +747,7 @@ fun LearningPackCard(
                 ) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text("Open Lesson", fontSize = 11.sp, maxLines = 1)
+                    Text(openLessonBtnText, fontSize = 11.sp, maxLines = 1)
                 }
 
                 OutlinedButton(
@@ -677,7 +757,7 @@ fun LearningPackCard(
                 ) {
                     Icon(imageVector = Icons.Default.Quiz, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text("Take Quiz", fontSize = 11.sp, maxLines = 1)
+                    Text(takeQuizBtnText, fontSize = 11.sp, maxLines = 1)
                 }
 
                 OutlinedButton(
@@ -687,7 +767,7 @@ fun LearningPackCard(
                 ) {
                     Icon(imageVector = Icons.Default.CellTower, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(3.dp))
-                    Text("Share P2P", fontSize = 11.sp, maxLines = 1)
+                    Text(shareP2PBtnText, fontSize = 11.sp, maxLines = 1)
                 }
             }
         }

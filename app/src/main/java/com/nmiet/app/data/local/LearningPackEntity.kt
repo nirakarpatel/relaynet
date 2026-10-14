@@ -27,6 +27,8 @@ data class LearningPackEntity(
     val isCachedLocally: Boolean = true,
     val board: String = "ODISHA_STATE",
     val grade: Int = 9,
+    val educationalBoard: String = "ODISHA_STATE",
+    val gradeLevel: String = "Class 9",
     val title: String = "",
     val odiaContentJson: String = "",
     val englishContentJson: String = "",
@@ -38,10 +40,15 @@ data class LearningPackEntity(
     val sectionsJson: String = "[]",
     val quizQuestionsJson: String = "[]",
     val sizeBytes: Long = 1887436L,
-    val sourceAttribution: String = "Odisha State Board (BSE) & NCERT"
+    val sourceAttribution: String = "Odisha State Board (BSE) & NCERT",
+    val diagramLocalPath: String? = null
 ) {
     fun toDomain(): LearningPack {
-        val boardEnum = try { Board.valueOf(board) } catch (_: Exception) { Board.ODISHA_STATE }
+        val boardStr = if (educationalBoard.isNotBlank()) educationalBoard else board
+        val boardEnum = try { Board.valueOf(boardStr) } catch (_: Exception) { Board.ODISHA_STATE }
+        val gradeNum = if (gradeLevel.startsWith("Class ")) {
+            gradeLevel.removePrefix("Class ").toIntOrNull() ?: grade
+        } else grade
         val parsedSections = parseSectionsJson(sectionsJson)
         val parsedQuestions = parseQuestionsJson(quizQuestionsJson)
 
@@ -50,7 +57,7 @@ data class LearningPackEntity(
             titleOdia = if (titleOdia.isNotBlank()) titleOdia else "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)",
             titleEnglish = if (titleEnglish.isNotBlank()) titleEnglish else title,
             board = boardEnum,
-            classGrade = grade,
+            classGrade = gradeNum,
             subject = if (subject.isNotBlank()) subject else "Science (ବିଜ୍ଞାନ)",
             chapterNumber = chapterNumber,
             chapterOdia = chapterOdia,
@@ -71,7 +78,8 @@ data class LearningPackEntity(
             isDownloaded = isCachedLocally,
             isReceivedViaMesh = (origin == ContentOrigin.P2P_RECEIVED || origin == ContentOrigin.P2P_SENT),
             peerSenderName = senderPeerName,
-            sourceAttribution = sourceAttribution
+            sourceAttribution = sourceAttribution,
+            diagramLocalPath = diagramLocalPath
         )
     }
 
@@ -90,6 +98,8 @@ data class LearningPackEntity(
                 isCachedLocally = pack.isDownloaded,
                 board = pack.board.name,
                 grade = pack.classGrade,
+                educationalBoard = pack.board.name,
+                gradeLevel = "Class ${pack.classGrade}",
                 title = pack.titleEnglish,
                 odiaContentJson = pack.lesson.summaryOdia,
                 englishContentJson = pack.lesson.summaryEnglish,
@@ -101,7 +111,8 @@ data class LearningPackEntity(
                 sectionsJson = serializeSections(pack.lesson.sections),
                 quizQuestionsJson = serializeQuestions(pack.quizQuestions),
                 sizeBytes = pack.sizeBytes,
-                sourceAttribution = pack.sourceAttribution
+                sourceAttribution = pack.sourceAttribution,
+                diagramLocalPath = pack.diagramLocalPath
             )
         }
 
