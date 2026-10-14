@@ -53,7 +53,7 @@ class ContentRepositoryImpl(
 
     override fun getApiKey(): String = activeApiKey
 
-    private val _learnerProfile = MutableStateFlow(LearnerProfile())
+    private val _learnerProfile = MutableStateFlow<LearnerProfile>(LearnerProfile())
     override fun getLearnerProfileFlow(): Flow<LearnerProfile> = _learnerProfile.asStateFlow()
 
     override suspend fun updateLearnerProfile(profile: LearnerProfile) {
@@ -87,6 +87,12 @@ class ContentRepositoryImpl(
 
     override fun getLearningPacksFlow(): Flow<List<LearningPack>> {
         return learningDao.getAllPacks().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getPacksForStudentFlow(board: String, grade: String): Flow<List<LearningPack>> {
+        return learningDao.getPacksForStudent(board, grade).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -599,6 +605,12 @@ class ContentRepositoryImpl(
             isDownloaded = true
         )
         learningDao.insertPack(LearningPackEntity.fromDomain(pilotPack))
+
+        val pilotClass10Pack = PilotCurriculumCatalog.getPilotClass10LearningPack().copy(
+            origin = ContentOrigin.INTERNET_DOWNLOADED,
+            isDownloaded = true
+        )
+        learningDao.insertPack(LearningPackEntity.fromDomain(pilotClass10Pack))
 
         // Preload an initial topic mastery (61% Developing tier)
         learningDao.insertOrUpdateMastery(

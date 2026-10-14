@@ -95,6 +95,8 @@ import com.nmiet.app.permissions.NearbyPermissionManager
 import com.nmiet.app.ui.components.AppTopBar
 import com.nmiet.app.ui.components.DemoModeBadge
 import com.nmiet.app.ui.components.EmptyView
+import com.nmiet.app.ui.components.LocalizedText
+import com.nmiet.app.ui.components.MultilingualString
 import com.nmiet.app.ui.theme.PrimaryBlue
 import com.nmiet.app.ui.theme.SuccessGreen
 
@@ -160,8 +162,13 @@ fun NearbyShareScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 96.dp // Guaranteed clearance above bottom bar + floating mic
+            )
         ) {
             item {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -545,10 +552,14 @@ fun NearbyShareScreen(
             if (shareDirection == ShareDirection.SEND) {
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Select Model to Transfer via Bluetooth",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                    LocalizedText(
+                        text = MultilingualString(
+                            english = "Manifest Selection Checklist",
+                            odia = "ପାଠ ତାଲିକା ଚୟନ",
+                            hindi = "पाठ चयन सूची"
+                        ),
+                        currentLanguageFlow = viewModel.currentLanguage,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
                         text = "Choose whether to transfer full Curriculum Learning Packs or AI Generated Notes models.",
@@ -682,7 +693,7 @@ fun NearbyShareScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(96.dp))
             }
         }
     }

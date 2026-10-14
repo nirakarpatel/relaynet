@@ -20,6 +20,9 @@ interface LearningDao {
     @Query("SELECT * FROM learning_packs ORDER BY grade ASC, subject ASC")
     fun getAllPacks(): Flow<List<LearningPackEntity>>
 
+    @Query("SELECT * FROM learning_packs WHERE educationalBoard = :board AND gradeLevel = :grade")
+    fun getPacksForStudent(board: String, grade: String): Flow<List<LearningPackEntity>>
+
     @Query("SELECT * FROM learning_packs WHERE origin IN ('CLOUD_DOWNLOADED', 'INTERNET_DOWNLOADED') ORDER BY grade ASC, chapterNumber ASC")
     fun getDownloadedPacks(): Flow<List<LearningPackEntity>>
 

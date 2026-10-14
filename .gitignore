@@ -12,4 +12,6 @@ app/build/
 __pycache__/
 *.py[cod]
 *$py.class
-.pytest_cache/
+*.pytest_cache/
+.env
+*.env
