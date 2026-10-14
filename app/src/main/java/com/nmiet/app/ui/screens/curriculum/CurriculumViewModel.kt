@@ -60,29 +60,27 @@ class CurriculumViewModel(
         repository.getLearningPacksFlow(),
         profile
     ) { all, prof ->
-        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
-        val targetBoardName = prof.educationalBoard
-        val count = all.count { pack ->
+        val targetGradeInt = prof.classGrade
+        val targetBoard = prof.board
+        all.count { pack ->
             pack.origin in listOf(ContentOrigin.CLOUD_DOWNLOADED, ContentOrigin.INTERNET_DOWNLOADED) &&
                 !pack.isReceivedViaMesh &&
-                pack.board.name.equals(targetBoardName, ignoreCase = true) &&
-                (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
+                pack.board == targetBoard &&
+                pack.classGrade == targetGradeInt
         }
-        count
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
     val sharedPacksCount: StateFlow<Int> = combine(
         repository.getLearningPacksFlow(),
         profile
     ) { all, prof ->
-        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
-        val targetBoardName = prof.educationalBoard
-        val count = all.count { pack ->
+        val targetGradeInt = prof.classGrade
+        val targetBoard = prof.board
+        all.count { pack ->
             (pack.origin in listOf(ContentOrigin.P2P_RECEIVED, ContentOrigin.P2P_SENT) || pack.isReceivedViaMesh) &&
-                pack.board.name.equals(targetBoardName, ignoreCase = true) &&
-                (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
+                pack.board == targetBoard &&
+                pack.classGrade == targetGradeInt
         }
-        count
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val filteredPacks: StateFlow<List<LearningPack>> = combine(
@@ -90,8 +88,8 @@ class CurriculumViewModel(
         profile,
         _selectedBucket
     ) { allPacks, prof, bucket ->
-        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
-        val targetBoardName = prof.educationalBoard
+        val targetGradeInt = prof.classGrade
+        val targetBoard = prof.board
 
         allPacks.filter { pack ->
             val matchesBucket = when (bucket) {
@@ -100,8 +98,8 @@ class CurriculumViewModel(
                 ContentBucketFilter.SHARED ->
                     pack.origin in listOf(ContentOrigin.P2P_RECEIVED, ContentOrigin.P2P_SENT) || pack.isReceivedViaMesh
             }
-            val matchesBoard = pack.board.name.equals(targetBoardName, ignoreCase = true)
-            val matchesGrade = (pack.classGrade == targetGradeInt || "Class ${pack.classGrade}".equals(prof.classGrade, ignoreCase = true))
+            val matchesBoard = pack.board == targetBoard
+            val matchesGrade = pack.classGrade == targetGradeInt
             matchesBucket && matchesBoard && matchesGrade
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -113,10 +111,10 @@ class CurriculumViewModel(
         repository.getCurriculumNodesFlow(),
         profile
     ) { nodes, prof ->
-        val targetGradeInt = prof.classGrade.removePrefix("Class ").trim().toIntOrNull() ?: 9
-        val targetBoardName = prof.educationalBoard
+        val targetGradeInt = prof.classGrade
+        val targetBoard = prof.board
         nodes.filter { node ->
-            node.board.name.equals(targetBoardName, ignoreCase = true) && node.classGrade == targetGradeInt
+            node.board == targetBoard && node.classGrade == targetGradeInt
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

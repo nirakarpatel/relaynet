@@ -422,7 +422,7 @@ fun SettingsScreen(
                     ) {
                         listOf(6, 7, 8, 9, 10).forEach { grade ->
                             FilterChip(
-                                selected = profile.gradeInt == grade || profile.classGrade == "Class $grade",
+                                selected = profile.gradeInt == grade || profile.classGrade == grade,
                                 onClick = { viewModel.updateGrade(grade) },
                                 label = {
                                     Text(

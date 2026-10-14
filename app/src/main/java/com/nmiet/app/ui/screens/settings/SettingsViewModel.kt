@@ -85,7 +85,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateEducationalBoard(board.name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(educationalBoard = board.name))
+            repository.updateLearnerProfile(current.withBoard(board))
         }
     }
 
@@ -93,7 +93,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateEducationalBoard(board)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(educationalBoard = board))
+            repository.updateLearnerProfile(current.withBoard(board))
         }
     }
 
@@ -102,7 +102,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateClassGrade(gradeStr)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(classGrade = gradeStr))
+            repository.updateLearnerProfile(current.withGrade(grade))
         }
     }
 
@@ -110,7 +110,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateClassGrade(grade)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(classGrade = grade))
+            repository.updateLearnerProfile(current.withGrade(grade))
         }
     }
 
@@ -118,7 +118,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateStudentName(name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(studentName = name))
+            repository.updateLearnerProfile(current.withName(name))
         }
     }
 
@@ -142,7 +142,7 @@ class SettingsViewModel(
         userPreferencesRepository.updateLanguageMode(lang)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(languageMode = lang))
+            repository.updateLearnerProfile(current.withLanguage(lang))
         }
     }
 
