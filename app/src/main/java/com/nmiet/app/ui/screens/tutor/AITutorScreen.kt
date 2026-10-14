@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.TutorMessage
 import com.nmiet.app.domain.model.TutorSender
 import com.nmiet.app.ui.components.AppTopBar
@@ -88,6 +89,7 @@ fun AITutorScreen(
     viewModel: AITutorViewModel
 ) {
     val context = LocalContext.current
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
@@ -103,18 +105,42 @@ fun AITutorScreen(
         }
     }
 
-    // One-Tap Suggestion Chips
-    val sampleQueries = listOf(
-        "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
-        "Where does Oxygen come from in photosynthesis?",
-        "Explain Light vs Dark Reactions in Odia",
-        "Who is Salman Khan?" // Test guardrail refusal
-    )
+    // Dynamic Screen Header
+    val headerTitle = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> "AI Academic Tutor"
+        AppLanguage.ODIA_ONLY -> "AI ଶିକ୍ଷା ସାଥୀ"
+        AppLanguage.HINDI_ONLY -> "AI अध्ययन शिक्षक"
+        AppLanguage.BILINGUAL_EN_HI, AppLanguage.BILINGUAL_EN_OR -> "Bilingual AI Tutor"
+    }
+
+    // One-Tap Suggestion Chips based on Language Mode
+    val sampleQueries = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> listOf(
+            "Explain Photosynthesis",
+            "Where does Oxygen come from in photosynthesis?"
+        )
+        AppLanguage.ODIA_ONLY -> listOf(
+            "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
+            "ଆଲୋକ ଶ୍ଳେଷଣରେ ଅମ୍ଳଜାନ କେଉଁଠାରୁ ଆସେ?"
+        )
+        AppLanguage.HINDI_ONLY -> listOf(
+            "प्रकाश संश्लेषण समझाइए",
+            "प्रकाश संश्लेषण में ऑक्सीजन कहाँ से निकलती है?"
+        )
+        AppLanguage.BILINGUAL_EN_HI -> listOf(
+            "Explain Photosynthesis",
+            "प्रकाश संश्लेषण में ऑक्सीजन कहाँ से निकलती है?"
+        )
+        AppLanguage.BILINGUAL_EN_OR -> listOf(
+            "ଆଲୋକ ଶ୍ଳେଷଣ କ’ଣ ବୁଝାନ୍ତୁ",
+            "Where does Oxygen come from in photosynthesis?"
+        )
+    }
 
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Bilingual AI Tutor",
+                title = headerTitle,
                 isOnline = syncStatus.isOnline
             )
         }
@@ -161,7 +187,11 @@ fun AITutorScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { it.id }) { msg ->
-                    TutorMessageBubble(message = msg, isOnlineContext = syncStatus.isOnline)
+                    TutorMessageBubble(
+                        message = msg,
+                        isOnlineContext = syncStatus.isOnline,
+                        currentLanguage = currentLanguage
+                    )
                 }
 
                 if (isGenerating) {
@@ -184,6 +214,13 @@ fun AITutorScreen(
             }
 
             // One-tap suggestion chips
+            val attachChipLabel = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "📸 Attach Diagram"
+                AppLanguage.ODIA_ONLY -> "📸 ଚିତ୍ର ସଂଲଗ୍ନ କରନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "📸 चित्र संलग्न करें"
+                AppLanguage.BILINGUAL_EN_HI -> "📸 Attach Diagram (चित्र)"
+                AppLanguage.BILINGUAL_EN_OR -> "📸 Attach Diagram (ଚିତ୍ର)"
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -193,7 +230,7 @@ fun AITutorScreen(
             ) {
                 SuggestionChip(
                     onClick = { viewModel.attachSampleTextbookPhoto() },
-                    label = { Text("📸 Attach Diagram (ଚିତ୍ର)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
+                    label = { Text(attachChipLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
                 )
                 sampleQueries.forEach { query ->
                     SuggestionChip(
@@ -220,7 +257,11 @@ fun AITutorScreen(
 }
 
 @Composable
-fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
+fun TutorMessageBubble(
+    message: TutorMessage,
+    isOnlineContext: Boolean,
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR
+) {
     val isUser = message.sender == TutorSender.USER
 
     Row(
@@ -229,6 +270,20 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
     ) {
         // Amber warning card if query was out of syllabus & rejected by guardrail
         if (!message.isStudyRelated) {
+            val guardrailTitle = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "Study-Only Guardrail Triggered"
+                AppLanguage.ODIA_ONLY -> "କେବଳ ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା ନିୟମ"
+                AppLanguage.HINDI_ONLY -> "केवल अध्ययन सुरक्षा नियम"
+                AppLanguage.BILINGUAL_EN_HI -> "Study Guardrail (अध्ययन सुरक्षा)"
+                AppLanguage.BILINGUAL_EN_OR -> "Study Guardrail (ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା)"
+            }
+            val guardrailMsg = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "I can only answer academic curriculum questions."
+                AppLanguage.ODIA_ONLY -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି।"
+                AppLanguage.HINDI_ONLY -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ।"
+                AppLanguage.BILINGUAL_EN_HI -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ। (I can only answer academic curriculum questions)."
+                AppLanguage.BILINGUAL_EN_OR -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions)."
+            }
             Card(
                 modifier = Modifier.fillMaxWidth(0.92f),
                 shape = RoundedCornerShape(14.dp),
@@ -245,7 +300,7 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Study-Only Guardrail Triggered",
+                            text = guardrailTitle,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = WarningAmber
@@ -253,21 +308,12 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions).",
+                        text = guardrailMsg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 20.sp
                     )
-                    if (message.textOdia.isNotBlank() && !message.textOdia.contains("ମୁଁ କେବଳ ପାଠପଢ଼ା")) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = message.textOdia,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 17.sp
-                        )
-                    }
                 }
             }
             return@Row
@@ -332,17 +378,37 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // Odia text
+                val primaryText = if (isUser) {
+                    message.textEnglish.ifBlank { message.textOdia }
+                } else {
+                    when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> message.textEnglish
+                        AppLanguage.ODIA_ONLY -> message.textOdia.ifBlank { message.textEnglish }
+                        AppLanguage.HINDI_ONLY -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+                        AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+                        AppLanguage.BILINGUAL_EN_OR -> message.textOdia.ifBlank { message.textEnglish }
+                    }
+                }
+
+                val secondaryText = if (!isUser) {
+                    when (currentLanguage) {
+                        AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank() && message.textEnglish.isNotBlank()) message.textEnglish else null
+                        AppLanguage.BILINGUAL_EN_OR -> if (message.textOdia.isNotBlank() && message.textOdia != message.textEnglish) message.textEnglish else null
+                        else -> null
+                    }
+                } else null
+
+                // Primary Message Text
                 Text(
-                    text = message.textOdia,
+                    text = primaryText,
                     fontSize = 14.sp,
                     lineHeight = 21.sp,
                     fontWeight = if (isUser) FontWeight.Medium else FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                // English text for Tutor messages (Bilingual support)
-                if (!isUser && message.textEnglish != message.textOdia) {
+                // English text translation block beneath for Bilingual modes
+                if (secondaryText != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -354,7 +420,7 @@ fun TutorMessageBubble(message: TutorMessage, isOnlineContext: Boolean) {
                         Column {
                             Text("English Translation:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Text(
-                                text = message.textEnglish,
+                                text = secondaryText,
                                 fontSize = 12.sp,
                                 lineHeight = 17.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

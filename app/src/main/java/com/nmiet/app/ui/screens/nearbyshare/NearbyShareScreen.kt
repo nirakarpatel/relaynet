@@ -68,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.PeerDevice
 import com.nmiet.app.domain.model.TransferState
 import com.nmiet.app.ui.components.AppTopBar
@@ -82,6 +83,7 @@ fun NearbyShareScreen(
     viewModel: NearbyShareViewModel,
     onNavigateToCurriculum: () -> Unit
 ) {
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
     val shareDirection by viewModel.shareDirection.collectAsState()
     val transferState by viewModel.transferState.collectAsState()
     val isDemoMode by viewModel.useDemoMode.collectAsState()
@@ -91,10 +93,18 @@ fun NearbyShareScreen(
     val connectedPeerName = (transferState as? TransferState.Connected)?.connectedPeer?.name
         ?: (transferState as? TransferState.Transferring)?.peer?.name
 
+    val screenTitle = when (currentLanguage) {
+        AppLanguage.ENGLISH_ONLY -> "P2P ShikshaMesh"
+        AppLanguage.ODIA_ONLY -> "ପିଅର୍ ଶିକ୍ଷାମେସ୍"
+        AppLanguage.HINDI_ONLY -> "पी2पी शिक्षामेश"
+        AppLanguage.BILINGUAL_EN_HI -> "P2P ShikshaMesh • शिक्षामेश"
+        AppLanguage.BILINGUAL_EN_OR -> "P2P ShikshaMesh • ଶିକ୍ଷାମେସ୍"
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "P2P ShikshaMesh",
+                title = screenTitle,
                 isOnline = false,
                 connectedPeerName = connectedPeerName ?: if (isDemoMode) "Node-02" else null,
                 isDemoMode = isDemoMode
@@ -112,7 +122,24 @@ fun NearbyShareScreen(
 
                 val isSending = shareDirection == ShareDirection.SEND
 
-                // Segmented Toggle: Send Packs vs Receive Packs
+                // Segmented Mode Toggle:
+                // Tab 1: "Send Packs" / "ପାଠ ପଠାନ୍ତୁ" / "पाठ भेजें"
+                // Tab 2: "Receive Packs" / "ଗ୍ରହଣ କରନ୍ତୁ" / "पाठ प्राप्त करें"
+                val sendPacksText = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Send Packs"
+                    AppLanguage.ODIA_ONLY -> "ପାଠ ପଠାନ୍ତୁ"
+                    AppLanguage.HINDI_ONLY -> "पाठ भेजें"
+                    AppLanguage.BILINGUAL_EN_HI -> "Send (पाठ भेजें)"
+                    AppLanguage.BILINGUAL_EN_OR -> "Send (ପାଠ ପଠାନ୍ତୁ)"
+                }
+                val receivePacksText = when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Receive Packs"
+                    AppLanguage.ODIA_ONLY -> "ଗ୍ରହଣ କରନ୍ତୁ"
+                    AppLanguage.HINDI_ONLY -> "पाठ प्राप्त करें"
+                    AppLanguage.BILINGUAL_EN_HI -> "Receive (प्राप्त करें)"
+                    AppLanguage.BILINGUAL_EN_OR -> "Receive (ଗ୍ରହଣ କରନ୍ତୁ)"
+                }
+
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -123,7 +150,7 @@ fun NearbyShareScreen(
                         icon = {},
                         label = {
                             Text(
-                                text = "Send (ପଠାନ୍ତୁ)",
+                                text = sendPacksText,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 fontSize = 12.sp,
@@ -139,7 +166,7 @@ fun NearbyShareScreen(
                         icon = {},
                         label = {
                             Text(
-                                text = "Receive (ଗ୍ରହଣ କରନ୍ତୁ)",
+                                text = receivePacksText,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 fontSize = 12.sp,
@@ -297,6 +324,25 @@ fun NearbyShareScreen(
                                 }
                             }
 
+                            // Radar Action Button: "Scan Radar" / "ସ୍କାନ୍ ରାଡାର୍" / "स्कैन रडार"
+                            val radarButtonText = if (isScanning) {
+                                when (currentLanguage) {
+                                    AppLanguage.ENGLISH_ONLY -> "Stop"
+                                    AppLanguage.ODIA_ONLY -> "ବନ୍ଦ କରନ୍ତୁ"
+                                    AppLanguage.HINDI_ONLY -> "रोकें"
+                                    AppLanguage.BILINGUAL_EN_HI -> "Stop (रोकें)"
+                                    AppLanguage.BILINGUAL_EN_OR -> "Stop (ବନ୍ଦ)"
+                                }
+                            } else {
+                                when (currentLanguage) {
+                                    AppLanguage.ENGLISH_ONLY -> "Scan Radar"
+                                    AppLanguage.ODIA_ONLY -> "ସ୍କାନ୍ ରାଡାର୍"
+                                    AppLanguage.HINDI_ONLY -> "स्कैन रडार"
+                                    AppLanguage.BILINGUAL_EN_HI -> "Scan (स्कैन)"
+                                    AppLanguage.BILINGUAL_EN_OR -> "Scan (ସ୍କାନ୍)"
+                                }
+                            }
+
                             Button(
                                 onClick = { if (isScanning) viewModel.stopScanning() else viewModel.startScanning() },
                                 modifier = Modifier
@@ -314,7 +360,7 @@ fun NearbyShareScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (isScanning) "Stop" else "Scan Radar",
+                                    text = radarButtonText,
                                     maxLines = 1,
                                     softWrap = false,
                                     style = MaterialTheme.typography.labelLarge

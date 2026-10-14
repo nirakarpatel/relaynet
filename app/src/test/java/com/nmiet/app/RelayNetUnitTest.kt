@@ -220,4 +220,57 @@ class RelayNetUnitTest {
         assertEquals("ROUTE_NOTES", parseTestIntent("ନୋଟ୍ ତିଆରି କର"))
         assertEquals("ROUTE_TUTOR_QUERY", parseTestIntent("Where does oxygen come from?"))
     }
+
+    @Test
+    fun multilingualEngine_appLanguageCodesAndPairings() {
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.ENGLISH_ONLY, com.nmiet.app.domain.model.AppLanguage.fromCode("en"))
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.ODIA_ONLY, com.nmiet.app.domain.model.AppLanguage.fromCode("or"))
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.HINDI_ONLY, com.nmiet.app.domain.model.AppLanguage.fromCode("hi"))
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_HI, com.nmiet.app.domain.model.AppLanguage.fromCode("en_hi"))
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR, com.nmiet.app.domain.model.AppLanguage.fromCode("en_or"))
+        // Fallback default
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR, com.nmiet.app.domain.model.AppLanguage.fromCode("unknown_code"))
+        assertEquals(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR, com.nmiet.app.domain.model.AppLanguage.fromCode(null))
+
+        assertTrue(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_HI.isBilingual)
+        assertTrue(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR.isBilingual)
+        org.junit.Assert.assertFalse(com.nmiet.app.domain.model.AppLanguage.HINDI_ONLY.isBilingual)
+    }
+
+    @Test
+    fun multilingualString_resolvesPrimaryAndSecondary() {
+        val string = com.nmiet.app.ui.components.MultilingualString(
+            english = "Photosynthesis",
+            odia = "ଆଲୋକ ଶ୍ଳେଷଣ",
+            hindi = "प्रकाश संश्लेषण"
+        )
+
+        assertEquals("Photosynthesis", string.getPrimary(com.nmiet.app.domain.model.AppLanguage.ENGLISH_ONLY))
+        org.junit.Assert.assertNull(string.getSecondary(com.nmiet.app.domain.model.AppLanguage.ENGLISH_ONLY))
+
+        assertEquals("ଆଲୋକ ଶ୍ଳେଷଣ", string.getPrimary(com.nmiet.app.domain.model.AppLanguage.ODIA_ONLY))
+        org.junit.Assert.assertNull(string.getSecondary(com.nmiet.app.domain.model.AppLanguage.ODIA_ONLY))
+
+        assertEquals("प्रकाश संश्लेषण", string.getPrimary(com.nmiet.app.domain.model.AppLanguage.HINDI_ONLY))
+        org.junit.Assert.assertNull(string.getSecondary(com.nmiet.app.domain.model.AppLanguage.HINDI_ONLY))
+
+        assertEquals("Photosynthesis", string.getPrimary(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_HI))
+        assertEquals("प्रकाश संश्लेषण", string.getSecondary(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_HI))
+
+        assertEquals("Photosynthesis", string.getPrimary(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR))
+        assertEquals("ଆଲୋକ ଶ୍ଳେଷଣ", string.getSecondary(com.nmiet.app.domain.model.AppLanguage.BILINGUAL_EN_OR))
+    }
+
+    @Test
+    fun pilotPack_containsCompleteHindiTranslations() {
+        val pack = PilotCurriculumCatalog.getPilotLearningPack()
+        assertTrue(pack.titleHindi.contains("प्रकाश संश्लेषण"))
+        assertTrue(pack.lesson.summaryHindi.contains("ग्लूकोज"))
+        assertTrue(pack.quizQuestions.isNotEmpty())
+
+        val q1 = pack.quizQuestions.first()
+        assertTrue(q1.questionHindi.contains("ऑक्सीजन"))
+        assertTrue(q1.optionsHindi.any { it.contains("H₂O") })
+        assertTrue(q1.misconceptionHintHindi.contains("अवधारणा त्रुटि"))
+    }
 }
