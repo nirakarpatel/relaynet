@@ -16,6 +16,7 @@ interface ContentRepository {
 
     fun getCurriculumNodesFlow(): Flow<List<CurriculumNode>>
     fun getLearningPacksFlow(): Flow<List<LearningPack>>
+    fun getPacksForStudentFlow(board: String, grade: String): Flow<List<LearningPack>>
     fun getDownloadedPacksFlow(): Flow<List<LearningPack>>
     fun getSharedPacksFlow(): Flow<List<LearningPack>>
     fun getLearningPackByIdFlow(packId: String): Flow<LearningPack?>
@@ -39,10 +40,22 @@ interface ContentRepository {
         language: String = "odia"
     ): TutorMessage
 
+    suspend fun scanAndSolveTextbook(
+        imageBitmap: Bitmap,
+        userPrompt: String? = null,
+        language: String = "en_or",
+        curriculumContext: String = "Class 9 Science - Biology / Life Science"
+    ): TutorMessage
+
     suspend fun saveIncomingLearningPack(pack: LearningPack, peerName: String)
     suspend fun deleteLearningPack(packId: String)
     suspend fun resetToPilotDemoPacks()
     fun setSimulatedNetworkOnline(isOnline: Boolean)
+
+    suspend fun loginWithEmail(email: String, password: String): Result<LearnerProfile>
+    suspend fun registerWithEmail(name: String, email: String, password: String, classGrade: Int, board: com.nmiet.app.domain.model.Board): Result<LearnerProfile>
+    suspend fun loginWithGoogle(idToken: String?, email: String, name: String, avatarUrl: String?): Result<LearnerProfile>
+    suspend fun logout()
 
     fun getAllGeneratedNotesFlow(): Flow<List<com.nmiet.app.domain.model.GeneratedNote>>
     suspend fun saveGeneratedNote(note: com.nmiet.app.domain.model.GeneratedNote)

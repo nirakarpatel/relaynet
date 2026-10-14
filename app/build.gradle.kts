@@ -4,6 +4,31 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val geminiKeyList = mutableListOf<String>()
+for (i in 1..5) {
+    val key = localProperties.getProperty("gemini.key$i", "")?.trim() ?: ""
+    if (key.isNotBlank()) {
+        geminiKeyList.add(key)
+    }
+}
+if (geminiKeyList.isEmpty()) {
+    val commaKeys = localProperties.getProperty("gemini.keys", "")?.trim() ?: ""
+    if (commaKeys.isNotBlank()) {
+        geminiKeyList.addAll(commaKeys.split(",").map { it.trim() }.filter { it.isNotBlank() })
+    }
+}
+val geminiKeys = geminiKeyList.joinToString(",")
+val nvidiaApiKey = localProperties.getProperty("nvidia.api.key", "")?.trim() ?: ""
+
 android {
     namespace = "com.nmiet.app"
     compileSdk {
@@ -18,6 +43,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+
+        buildConfigField("String", "GEMINI_KEYS", "\"$geminiKeys\"")
+        buildConfigField("String", "NVIDIA_API_KEY", "\"$nvidiaApiKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,6 +65,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
@@ -61,6 +90,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+
+    // Coil Image Loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Room
     implementation(libs.androidx.room.runtime)

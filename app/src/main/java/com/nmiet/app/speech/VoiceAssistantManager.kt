@@ -8,7 +8,10 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import com.nmiet.app.domain.model.TutorSender
+import android.util.Log
+import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.remote.GeminiKeyRotator
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.repository.ContentRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,25 +24,84 @@ import java.util.Locale
 
 sealed interface VoiceUiState {
     data object Idle : VoiceUiState
-    data class Listening(val partialText: String = "", val soundLevelRms: Float = 0f) : VoiceUiState
-    data class Processing(val recognizedText: String) : VoiceUiState
+
+    data class Listening(
+        val partialText: String = "",
+        val soundLevelRms: Float = 0f,
+        val languageLabel: String = ""
+    ) : VoiceUiState
+
+    data class Thinking(
+        val recognizedQuery: String,
+        val activeKeyIndex: Int = 1
+    ) : VoiceUiState
+
+    data class Processing(
+        val recognizedText: String
+    ) : VoiceUiState
+
+    data class Speaking(
+        val query: String,
+        val answerText: String,
+        val textEnglish: String = answerText,
+        val textOdia: String = answerText,
+        val isPaused: Boolean = false,
+        val soundLevelRms: Float = 0f
+    ) : VoiceUiState
+
+    data class Paused(
+        val query: String,
+        val answerText: String,
+        val textEnglish: String = answerText,
+        val textOdia: String = answerText
+    ) : VoiceUiState
+
     data class ActionExecuted(
         val recognizedText: String,
         val actionTitle: String,
         val actionOdia: String,
         val targetRoute: String?
     ) : VoiceUiState
-    data class Speaking(
-        val textEnglish: String,
-        val textOdia: String,
-        val isPaused: Boolean = false
-    ) : VoiceUiState
+
     data class Error(val errorMessage: String) : VoiceUiState
+}
+
+data class SpeechLangConfig(
+    val speechLocale: String,
+    val additionalLocales: Array<String>,
+    val ttsLocale: Locale,
+    val fallbackTtsLocale: Locale = Locale("en", "IN"),
+    val promptLanguageMode: String,
+    val displayLabel: String
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as SpeechLangConfig
+        return speechLocale == other.speechLocale &&
+                additionalLocales.contentEquals(other.additionalLocales) &&
+                ttsLocale == other.ttsLocale &&
+                fallbackTtsLocale == other.fallbackTtsLocale &&
+                promptLanguageMode == other.promptLanguageMode &&
+                displayLabel == other.displayLabel
+    }
+
+    override fun hashCode(): Int {
+        var result = speechLocale.hashCode()
+        result = 31 * result + additionalLocales.contentHashCode()
+        result = 31 * result + ttsLocale.hashCode()
+        result = 31 * result + fallbackTtsLocale.hashCode()
+        result = 31 * result + promptLanguageMode.hashCode()
+        result = 31 * result + displayLabel.hashCode()
+        return result
+    }
 }
 
 class VoiceAssistantManager(
     private val context: Context,
     private val repository: ContentRepository,
+    private val languageManager: LanguageManager,
+    private val geminiKeyRotator: GeminiKeyRotator = GeminiKeyRotator.getInstance(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
 ) : RecognitionListener, TextToSpeech.OnInitListener {
 
@@ -50,15 +112,63 @@ class VoiceAssistantManager(
     private var tts: TextToSpeech? = null
     private var isTtsReady = false
     private var isOdiaTtsSupported = false
+    private var currentSpokenText: String = ""
 
     init {
         initTts()
     }
 
+    fun getSpeechLanguageConfig(): SpeechLangConfig {
+        return when (languageManager.currentLanguage.value) {
+            AppLanguage.ENGLISH_ONLY -> SpeechLangConfig(
+                speechLocale = "en-IN",
+                additionalLocales = arrayOf("en-US"),
+                ttsLocale = Locale("en", "IN"),
+                fallbackTtsLocale = Locale.US,
+                promptLanguageMode = "Indian English",
+                displayLabel = "English (en-IN)"
+            )
+            AppLanguage.ODIA_ONLY -> SpeechLangConfig(
+                speechLocale = "or-IN",
+                additionalLocales = arrayOf("en-IN"),
+                ttsLocale = Locale("or", "IN"),
+                fallbackTtsLocale = Locale("en", "IN"),
+                promptLanguageMode = "native Odia (ଓଡ଼ିଆ)",
+                displayLabel = "ଓଡ଼ିଆ (Odia)"
+            )
+            AppLanguage.HINDI_ONLY -> SpeechLangConfig(
+                speechLocale = "hi-IN",
+                additionalLocales = arrayOf("en-IN"),
+                ttsLocale = Locale("hi", "IN"),
+                fallbackTtsLocale = Locale("en", "IN"),
+                promptLanguageMode = "Hindi (हिंदी)",
+                displayLabel = "हिंदी (Hindi)"
+            )
+            AppLanguage.BILINGUAL_EN_HI -> SpeechLangConfig(
+                speechLocale = "hi-IN",
+                additionalLocales = arrayOf("en-IN", "en-US"),
+                ttsLocale = Locale("hi", "IN"),
+                fallbackTtsLocale = Locale("en", "IN"),
+                promptLanguageMode = "clear Hindi with English keywords (conversational Hinglish academic style)",
+                displayLabel = "English + हिंदी"
+            )
+            AppLanguage.BILINGUAL_EN_OR -> SpeechLangConfig(
+                speechLocale = "or-IN",
+                additionalLocales = arrayOf("en-IN", "en-US"),
+                ttsLocale = Locale("or", "IN"),
+                fallbackTtsLocale = Locale("en", "IN"),
+                promptLanguageMode = "native Odia with English technical terms",
+                displayLabel = "English + ଓଡ଼ିଆ"
+            )
+        }
+    }
+
     private fun initTts() {
         try {
             tts = TextToSpeech(context.applicationContext, this)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e("VoiceAssistantManager", "Failed to init TTS: ${e.message}")
+        }
     }
 
     override fun onInit(status: Int) {
@@ -68,17 +178,15 @@ class VoiceAssistantManager(
             val langResult = tts?.isLanguageAvailable(odiaLocale) ?: TextToSpeech.LANG_NOT_SUPPORTED
             isOdiaTtsSupported = (langResult == TextToSpeech.LANG_AVAILABLE || langResult == TextToSpeech.LANG_COUNTRY_AVAILABLE)
 
-            if (isOdiaTtsSupported) {
-                tts?.language = odiaLocale
-            } else {
-                tts?.language = Locale("en", "IN")
-            }
+            val config = getSpeechLanguageConfig()
+            applyTtsLocale(config)
 
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
                 override fun onDone(utteranceId: String?) {
                     scope.launch {
-                        if (_uiState.value is VoiceUiState.Speaking) {
+                        val current = _uiState.value
+                        if (current is VoiceUiState.Speaking && !current.isPaused) {
                             _uiState.value = VoiceUiState.Idle
                         }
                     }
@@ -89,6 +197,15 @@ class VoiceAssistantManager(
                     }
                 }
             })
+        }
+    }
+
+    private fun applyTtsLocale(config: SpeechLangConfig) {
+        val primaryAvailable = tts?.isLanguageAvailable(config.ttsLocale) ?: TextToSpeech.LANG_NOT_SUPPORTED
+        if (primaryAvailable == TextToSpeech.LANG_AVAILABLE || primaryAvailable == TextToSpeech.LANG_COUNTRY_AVAILABLE) {
+            tts?.language = config.ttsLocale
+        } else {
+            tts?.language = config.fallbackTtsLocale
         }
     }
 
@@ -110,17 +227,24 @@ class VoiceAssistantManager(
                 speechRecognizer?.setRecognitionListener(this)
             }
 
+            val config = getSpeechLanguageConfig()
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "or-IN")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "or-IN")
-                putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", arrayOf("en-IN", "en-US"))
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, config.speechLocale)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, config.speechLocale)
+                if (config.additionalLocales.isNotEmpty()) {
+                    putExtra("android.speech.extra.EXTRA_ADDITIONAL_LANGUAGES", config.additionalLocales)
+                }
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             }
 
             speechRecognizer?.startListening(intent)
-            _uiState.value = VoiceUiState.Listening(partialText = "Listening in Odia & English...", soundLevelRms = 0f)
+            _uiState.value = VoiceUiState.Listening(
+                partialText = "Listening in ${config.displayLabel}...",
+                soundLevelRms = 0f,
+                languageLabel = config.displayLabel
+            )
         } catch (e: Exception) {
             _uiState.value = VoiceUiState.Error("Failed to start voice recognizer: ${e.message}")
         }
@@ -135,7 +259,12 @@ class VoiceAssistantManager(
     // --- RecognitionListener Callbacks ---
 
     override fun onReadyForSpeech(params: Bundle?) {
-        _uiState.value = VoiceUiState.Listening(partialText = "Listening...", soundLevelRms = 0f)
+        val config = getSpeechLanguageConfig()
+        _uiState.value = VoiceUiState.Listening(
+            partialText = "Listening...",
+            soundLevelRms = 0f,
+            languageLabel = config.displayLabel
+        )
     }
 
     override fun onRmsChanged(rmsdB: Float) {
@@ -151,7 +280,11 @@ class VoiceAssistantManager(
         val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
         val text = matches?.firstOrNull() ?: ""
         if (text.isNotBlank()) {
-            _uiState.value = VoiceUiState.Listening(partialText = text)
+            val config = getSpeechLanguageConfig()
+            _uiState.value = VoiceUiState.Listening(
+                partialText = text,
+                languageLabel = config.displayLabel
+            )
         }
     }
 
@@ -159,7 +292,10 @@ class VoiceAssistantManager(
         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
         val query = matches?.firstOrNull() ?: ""
         if (query.isNotBlank()) {
-            _uiState.value = VoiceUiState.Processing(recognizedText = query)
+            _uiState.value = VoiceUiState.Thinking(
+                recognizedQuery = query,
+                activeKeyIndex = geminiKeyRotator.getActiveKeyIndex()
+            )
             parseVoiceIntent(query)
         } else {
             _uiState.value = VoiceUiState.Idle
@@ -169,13 +305,13 @@ class VoiceAssistantManager(
     override fun onError(error: Int) {
         val errorMsg = when (error) {
             SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-            SpeechRecognizer.ERROR_CLIENT -> "Client error"
-            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Audio permission required"
-            SpeechRecognizer.ERROR_NETWORK -> "Network offline: using regional keyword match"
-            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+            SpeechRecognizer.ERROR_CLIENT -> "Speech recognition client error"
+            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+            SpeechRecognizer.ERROR_NETWORK -> "Network offline: please try speaking again"
+            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network connection timeout"
             SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized. Please speak again."
             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Voice recognizer is busy"
-            SpeechRecognizer.ERROR_SERVER -> "Server error"
+            SpeechRecognizer.ERROR_SERVER -> "Speech server error"
             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected"
             else -> "Voice recognition error ($error)"
         }
@@ -186,12 +322,12 @@ class VoiceAssistantManager(
     override fun onEndOfSpeech() {}
     override fun onEvent(eventType: Int, params: Bundle?) {}
 
-    // --- Voice Intent Parser (Command & Control) ---
+    // --- Voice Intent Parser & Academic Tutor Route ---
 
     fun parseVoiceIntent(spokenText: String) {
         val lower = spokenText.lowercase().trim()
 
-        // 1. "Open Photosynthesis" / "ଆଲୋକ ଶ୍ଳେଷଣ ଖୋଲ"
+        // 1. Navigation: "Open Photosynthesis" / "ଆଲୋକ ଶ୍ଳେଷଣ ଖୋଲ"
         if (lower.contains("photosynthesis") || lower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") ||
             lower.contains("open lesson") || lower.contains("ପାଠ ଖୋଲ") || lower.contains("chapter 4")
         ) {
@@ -202,14 +338,14 @@ class VoiceAssistantManager(
                 actionOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ଅଧ୍ୟାୟ ଖୋଲାଯାଉଛି...",
                 targetRoute = route
             )
-            speak(
-                textEnglish = "Opening Chapter 4 Photosynthesis lesson reader.",
-                textOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ଅଧ୍ୟାୟ ଖୋଲାଯାଉଛି।"
+            speakUtterance(
+                text = "Opening Chapter 4 Photosynthesis lesson reader.",
+                config = getSpeechLanguageConfig()
             )
             return
         }
 
-        // 2. "Start Quiz" / "କୁଇଜ୍ ଆରମ୍ଭ କର" / "test"
+        // 2. Navigation: "Start Quiz" / "କୁଇଜ୍ ଆରମ୍ଭ କର" / "test"
         if (lower.contains("quiz") || lower.contains("କୁଇଜ") || lower.contains("test") ||
             lower.contains("start quiz") || lower.contains("ପରୀକ୍ଷା")
         ) {
@@ -220,14 +356,14 @@ class VoiceAssistantManager(
                 actionOdia = "ଡାଇଗ୍ନୋଷ୍ଟିକ୍ କୁଇଜ୍ ଆରମ୍ଭ କରାଯାଉଛି...",
                 targetRoute = route
             )
-            speak(
-                textEnglish = "Launching diagnostic self-assessment quiz for Chapter 4.",
-                textOdia = "ଆପଣଙ୍କର ଅଭ୍ୟାସ କୁଇଜ୍ ଆରମ୍ଭ ହେଉଛି।"
+            speakUtterance(
+                text = "Launching diagnostic self-assessment quiz for Chapter 4.",
+                config = getSpeechLanguageConfig()
             )
             return
         }
 
-        // 3. "Generate Notes" / "ନୋଟ୍ ତିଆରି କର" / "revision notes"
+        // 3. Navigation: "Generate Notes" / "ନୋଟ୍ ତିଆରି କର" / "revision notes"
         if (lower.contains("notes") || lower.contains("ନୋଟ") || lower.contains("revision") ||
             lower.contains("generate note") || lower.contains("ସାରାଂଶ")
         ) {
@@ -238,61 +374,105 @@ class VoiceAssistantManager(
                 actionOdia = "ପୁନରାବୃତ୍ତି ନୋଟ୍ ପ୍ରସ୍ତୁତ କରାଯାଉଛି...",
                 targetRoute = route
             )
-            speak(
-                textEnglish = "Generating structured revision notes from curriculum cache.",
-                textOdia = "ଅଧ୍ୟାୟର ପୁନରାବୃତ୍ତି ନୋଟ୍ ପ୍ରସ୍ତୁତ କରାଯାଉଛି।"
+            speakUtterance(
+                text = "Generating structured revision notes from curriculum cache.",
+                config = getSpeechLanguageConfig()
             )
             return
         }
 
-        // 4. Spoken Academic Question -> Route directly to AI Tutor
+        // 4. Academic Question -> Gemini API Rotator with Failover & Fallback
         scope.launch {
-            _uiState.value = VoiceUiState.Processing("Consulting RelayNet AI Tutor for academic explanation...")
-            val response = repository.askTutor(questionText = spokenText)
-            val odiaText = response.textOdia
-            val engText = response.textEnglish
+            val config = getSpeechLanguageConfig()
+            _uiState.value = VoiceUiState.Thinking(
+                recognizedQuery = spokenText,
+                activeKeyIndex = geminiKeyRotator.getActiveKeyIndex()
+            )
+
+            val geminiResult = geminiKeyRotator.queryAcademicTutor(
+                prompt = spokenText,
+                languageMode = config.promptLanguageMode
+            )
+
+            val responseText = geminiResult.getOrElse { error ->
+                Log.w("VoiceAssistantManager", "Gemini keys exhausted or failed (${error.message}). Falling back to local offline tutor.")
+                val localTutor = repository.askTutor(questionText = spokenText)
+                when (languageManager.currentLanguage.value) {
+                    AppLanguage.ODIA_ONLY, AppLanguage.BILINGUAL_EN_OR -> {
+                        if (localTutor.textOdia.isNotBlank()) localTutor.textOdia else localTutor.textEnglish
+                    }
+                    else -> localTutor.textEnglish
+                }
+            }
 
             _uiState.value = VoiceUiState.Speaking(
-                textEnglish = engText,
-                textOdia = odiaText
+                query = spokenText,
+                answerText = responseText,
+                textEnglish = responseText,
+                textOdia = responseText,
+                isPaused = false
             )
-            speak(textEnglish = engText, textOdia = odiaText)
+            speakUtterance(text = responseText, config = config)
         }
     }
 
-    // --- Text-To-Speech (TTS) Execution ---
+    // --- Text-To-Speech (TTS) Execution & Controls ---
 
     fun speak(textEnglish: String, textOdia: String) {
-        if (!isTtsReady || tts == null) return
-
+        val config = getSpeechLanguageConfig()
+        val textToSpeak = if (isOdiaTtsSupported && textOdia.isNotBlank()) textOdia else textEnglish
         _uiState.value = VoiceUiState.Speaking(
+            query = "",
+            answerText = textToSpeak,
             textEnglish = textEnglish,
             textOdia = textOdia,
             isPaused = false
         )
+        speakUtterance(textToSpeak, config)
+    }
 
-        val spokenUtterance = if (isOdiaTtsSupported && textOdia.isNotBlank()) textOdia else textEnglish
-        tts?.speak(spokenUtterance, TextToSpeech.QUEUE_FLUSH, null, "voice_assistant_utterance")
+    private fun speakUtterance(text: String, config: SpeechLangConfig) {
+        if (!isTtsReady || tts == null) return
+        currentSpokenText = text
+        applyTtsLocale(config)
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "relaynet_voice_utterance")
     }
 
     fun pauseSpeaking() {
         tts?.stop()
         val current = _uiState.value
         if (current is VoiceUiState.Speaking) {
-            _uiState.value = current.copy(isPaused = true)
+            _uiState.value = VoiceUiState.Paused(
+                query = current.query,
+                answerText = current.answerText,
+                textEnglish = current.textEnglish,
+                textOdia = current.textOdia
+            )
         }
     }
 
     fun resumeSpeaking() {
         val current = _uiState.value
-        if (current is VoiceUiState.Speaking) {
-            speak(current.textEnglish, current.textOdia)
+        if (current is VoiceUiState.Paused) {
+            val config = getSpeechLanguageConfig()
+            _uiState.value = VoiceUiState.Speaking(
+                query = current.query,
+                answerText = current.answerText,
+                textEnglish = current.textEnglish,
+                textOdia = current.textOdia,
+                isPaused = false
+            )
+            speakUtterance(current.answerText, config)
         }
     }
 
     fun stopSpeaking() {
-        tts?.stop()
-        if (_uiState.value is VoiceUiState.Speaking) {
+        try {
+            tts?.stop()
+            speechRecognizer?.stopListening()
+        } catch (_: Exception) {}
+        val current = _uiState.value
+        if (current is VoiceUiState.Speaking || current is VoiceUiState.Thinking || current is VoiceUiState.Paused) {
             _uiState.value = VoiceUiState.Idle
         }
     }

@@ -305,7 +305,8 @@ fun NotesViewScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(imageVector = Icons.Default.Lightbulb, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Executive Summary (ସାରାଂଶ)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        val summaryTitle = if (languageMode == NotesLanguageMode.ENGLISH) "Executive Summary" else "Executive Summary (ସାରାଂଶ)"
+                                        Text(summaryTitle, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -346,7 +347,8 @@ fun NotesViewScreen(
                                             Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Key Takeaways & Core Concepts (ମୁଖ୍ୟ ତଥ୍ୟ)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        val takeawaysTitle = if (languageMode == NotesLanguageMode.ENGLISH) "Key Takeaways & Core Concepts" else "Key Takeaways & Core Concepts (ମୁଖ୍ୟ ତଥ୍ୟ)"
+                                        Text(takeawaysTitle, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     }
 
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -409,8 +411,9 @@ fun NotesViewScreen(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(imageVector = Icons.Default.Functions, contentDescription = null, tint = PrimaryBlue)
                                             Spacer(modifier = Modifier.width(8.dp))
+                                            val formulasTitle = if (languageMode == NotesLanguageMode.ENGLISH) "Formulas & Equations" else "Formulas & Equations (ରାସାୟନିକ ସମୀକରଣ)"
                                             Text(
-                                                text = "Formulas & Equations (ରାସାୟନିକ ସମୀକରଣ)",
+                                                text = formulasTitle,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp
                                             )
@@ -465,8 +468,9 @@ fun NotesViewScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
+                                        val pitfallTitle = if (languageMode == NotesLanguageMode.ENGLISH) "Exam Pitfall & Caution Traps" else "Exam Pitfall & Caution Traps (ପରୀକ୍ଷା ସତର୍କତା)"
                                         Text(
-                                            text = "Exam Pitfall & Caution Traps (ପରୀକ୍ଷା ସତର୍କତା)",
+                                            text = pitfallTitle,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
                                             color = WarningAmber

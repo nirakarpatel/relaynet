@@ -1,13 +1,20 @@
 package com.nmiet.app.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,11 +25,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,9 +42,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.remote.GeminiKeyRotator
 import com.nmiet.app.domain.repository.ContentRepository
 import com.nmiet.app.speech.VoiceAssistantManager
-import com.nmiet.app.ui.components.VoiceOverlayComposable
+import com.nmiet.app.ui.components.VoiceAssistantModal
+import com.nmiet.app.ui.components.VoiceAssistantOverlay
 import com.nmiet.app.ui.screens.curriculum.CurriculumScreen
 import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
 import com.nmiet.app.ui.screens.customquiz.CustomQuizRunnerScreen
@@ -44,9 +59,14 @@ import com.nmiet.app.ui.screens.nearbyshare.NearbyShareScreen
 import com.nmiet.app.ui.screens.nearbyshare.NearbyShareViewModel
 import com.nmiet.app.ui.screens.notes.NotesGeneratorViewModel
 import com.nmiet.app.ui.screens.notes.NotesViewScreen
+import com.nmiet.app.ui.screens.profile.AboutRelaynetScreen
+import com.nmiet.app.ui.screens.profile.AppSettingsScreen
+import com.nmiet.app.ui.screens.profile.ConnectivityPermissionsScreen
+import com.nmiet.app.ui.screens.profile.OfflineContentScreen
+import com.nmiet.app.ui.screens.profile.PrivacySecurityScreen
+import com.nmiet.app.ui.screens.profile.ProfileScreen
 import com.nmiet.app.ui.screens.quiz.QuizRunnerScreen
 import com.nmiet.app.ui.screens.quiz.QuizViewModel
-import com.nmiet.app.ui.screens.settings.SettingsScreen
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorScreen
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
@@ -64,23 +84,59 @@ fun AppNavHost(
     nearbyShareViewModel: NearbyShareViewModel,
     masteryViewModel: MasteryViewModel,
     settingsViewModel: SettingsViewModel,
+    languageManager: LanguageManager? = null,
+    geminiKeyRotator: GeminiKeyRotator? = null,
     voiceAssistantManager: VoiceAssistantManager? = null
 ) {
     val context = LocalContext.current
+    val actualLanguageManager = languageManager ?: LanguageManager.getInstance(context.applicationContext)
+    val actualKeyRotator = geminiKeyRotator ?: GeminiKeyRotator.getInstance()
+
     val voiceManager = voiceAssistantManager ?: remember {
-        VoiceAssistantManager(context.applicationContext, repository)
+        VoiceAssistantManager(
+            context = context.applicationContext,
+            repository = repository,
+            languageManager = actualLanguageManager,
+            geminiKeyRotator = actualKeyRotator
+        )
+    }
+
+    var isVoiceAssistantOpen by rememberSaveable { mutableStateOf(false) }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isVoiceAssistantOpen = true
+            voiceManager.startListening()
+        }
+    }
+
+    val onMicClick = {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            isVoiceAssistantOpen = true
+            voiceManager.startListening()
+        } else {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Tab 5: Profile replaces Settings
     val bottomNavItems = listOf(
         Screen.Curriculum,
-        Screen.AITutor,
+        Screen.Tutor,
         Screen.Mastery,
-        Screen.MeshShare,
-        Screen.Settings
+        Screen.NearbyShare,
+        Screen.Profile
     )
 
     val isFullScreen = currentRoute?.startsWith("lesson") == true ||
@@ -93,6 +149,8 @@ fun AppNavHost(
             currentRoute?.startsWith(Routes.LOCAL_AI_PLAYGROUND) == true
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             AnimatedVisibility(
                 visible = !isFullScreen,
@@ -104,9 +162,21 @@ fun AppNavHost(
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
                     bottomNavItems.forEach { screen ->
-                        val isSelected = currentRoute == screen.route
+                        // Profile tab is selected whenever route begins with "profile"
+                        val isSelected = if (screen == Screen.Profile) {
+                            currentRoute?.startsWith("profile") == true
+                        } else {
+                            currentRoute == screen.route
+                        }
+
+                        val icon = if (screen == Screen.Profile) {
+                            if (isSelected) Icons.Default.Person else Icons.Outlined.Person
+                        } else {
+                            screen.icon
+                        }
+
                         NavigationBarItem(
-                            icon = { Icon(imageVector = screen.icon, contentDescription = screen.title) },
+                            icon = { Icon(imageVector = icon, contentDescription = screen.title) },
                             label = { Text(screen.title) },
                             selected = isSelected,
                             colors = NavigationBarItemDefaults.colors(
@@ -131,11 +201,12 @@ fun AppNavHost(
             }
         },
         floatingActionButton = {
-            if (!isFullScreen) {
+            if (!isFullScreen && currentRoute != Screen.Tutor.route) {
                 FloatingActionButton(
-                    onClick = { voiceManager.startListening() },
+                    onClick = onMicClick,
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Assistant")
                 }
@@ -145,7 +216,7 @@ fun AppNavHost(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             NavHost(
                 navController = navController,
@@ -212,6 +283,45 @@ fun AppNavHost(
                     )
                 }
 
+                // Profile Overview Root Screen
+                composable(Screen.Profile.route) {
+                    ProfileScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                // Profile Sub-destinations
+                composable(Screen.AppSettings.route) {
+                    AppSettingsScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.ConnectivityPermissions.route) {
+                    ConnectivityPermissionsScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.OfflineContent.route) {
+                    OfflineContentScreen(
+                        navController = navController,
+                        settingsViewModel = settingsViewModel
+                    )
+                }
+
+                composable(Screen.PrivacySecurity.route) {
+                    PrivacySecurityScreen(navController = navController)
+                }
+
+                composable(Screen.AboutRelaynet.route) {
+                    AboutRelaynetScreen(navController = navController)
+                }
+
+                // Backward-compatibility: redirect legacy settings route to AppSettingsScreen
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
                         viewModel = settingsViewModel,
@@ -262,7 +372,7 @@ fun AppNavHost(
                     val packId = backStackEntry.arguments?.getString("packId") ?: ""
                     val topicTag = backStackEntry.arguments?.getString("topicTag")
                     val quizViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                        QuizViewModel(repository, packId, topicTag)
+                        QuizViewModel(repository, packId, topicTag, curriculumViewModel.languageManager)
                     }
                     QuizRunnerScreen(
                         viewModel = quizViewModel,
@@ -368,15 +478,21 @@ fun AppNavHost(
                 }
             }
 
-            // MODULE 3: Floating Hands-Free Voice Assistant Overlay
-            VoiceOverlayComposable(
+        }
+
+        // Real-Time Conversational Voice Assistant Overlay
+        if (isVoiceAssistantOpen) {
+            VoiceAssistantModal(
                 manager = voiceManager,
+                onDismiss = {
+                    isVoiceAssistantOpen = false
+                    voiceManager.dismiss()
+                },
                 onNavigate = { route ->
                     navController.navigate(route) {
                         launchSingleTop = true
                     }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                }
             )
         }
     }

@@ -3,6 +3,8 @@ package com.nmiet.app.ui.screens.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.repository.UserPreferencesRepository
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.Board
 import com.nmiet.app.domain.model.LearnerProfile
@@ -18,11 +20,14 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val repository: ContentRepository,
-    private val context: Context
+    private val context: Context,
+    val languageManager: LanguageManager = LanguageManager.getInstance(context),
+    val userPreferencesRepository: UserPreferencesRepository = UserPreferencesRepository.getInstance(context)
 ) : ViewModel() {
 
-    val profile: StateFlow<LearnerProfile> = repository.getLearnerProfileFlow()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LearnerProfile())
+    val currentLanguage: StateFlow<AppLanguage> = languageManager.currentLanguage
+
+    val profile: StateFlow<LearnerProfile> = userPreferencesRepository.learnerProfile
 
     val syncStatus: StateFlow<SyncStatus> = repository.getSyncStatusFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus())
@@ -40,28 +45,104 @@ class SettingsViewModel(
     private val _coreDataSizeMb = MutableStateFlow(1.4)
     val coreDataSizeMb: StateFlow<Double> = _coreDataSizeMb.asStateFlow()
 
+    private val _diagramsCacheSizeMb = MutableStateFlow(2.1)
+    val diagramsCacheSizeMb: StateFlow<Double> = _diagramsCacheSizeMb.asStateFlow()
+
     // Sync Queue Status
     private val _pendingSyncAttemptsCount = MutableStateFlow(3)
     val pendingSyncAttemptsCount: StateFlow<Int> = _pendingSyncAttemptsCount.asStateFlow()
 
+    // NVIDIA NIM / Cloud AI API Key State
+    private val apiPrefs = context.getSharedPreferences("relaynet_api_prefs", Context.MODE_PRIVATE)
+    private val defaultNvidiaKey = com.nmiet.app.BuildConfig.NVIDIA_API_KEY.takeIf { !it.startsWith("YOUR_") }.orEmpty()
+    private val _nvidiaApiKey = MutableStateFlow(
+        apiPrefs.getString("nvidia_api_key", null)?.takeIf { it.isNotBlank() } ?: defaultNvidiaKey
+    )
+    val nvidiaApiKey: StateFlow<String> = _nvidiaApiKey.asStateFlow()
+
+    init {
+        repository.setApiKey(_nvidiaApiKey.value)
+    }
+
+    fun saveNvidiaApiKey(key: String) {
+        val trimmed = key.trim()
+        _nvidiaApiKey.value = trimmed
+        apiPrefs.edit().putString("nvidia_api_key", trimmed).apply()
+        repository.setApiKey(trimmed)
+    }
+
+    fun clearNvidiaApiKey() {
+        _nvidiaApiKey.value = ""
+        apiPrefs.edit().remove("nvidia_api_key").apply()
+        repository.setApiKey("")
+    }
+
+    fun clearDiagramCache() {
+        _diagramsCacheSizeMb.value = 0.0
+    }
+
     fun updateBoard(board: Board) {
+        userPreferencesRepository.updateEducationalBoard(board.name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(board = board))
+            repository.updateLearnerProfile(current.copy(educationalBoard = board.name))
+        }
+    }
+
+    fun updateEducationalBoard(board: String) {
+        userPreferencesRepository.updateEducationalBoard(board)
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(educationalBoard = board))
         }
     }
 
     fun updateGrade(grade: Int) {
+        val gradeStr = "Class $grade"
+        userPreferencesRepository.updateClassGrade(gradeStr)
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(classGrade = gradeStr))
+        }
+    }
+
+    fun updateClassGrade(grade: String) {
+        userPreferencesRepository.updateClassGrade(grade)
         val current = profile.value
         viewModelScope.launch {
             repository.updateLearnerProfile(current.copy(classGrade = grade))
         }
     }
 
-    fun updateLanguage(lang: AppLanguage) {
+    fun updateLearnerName(name: String) {
+        userPreferencesRepository.updateStudentName(name)
         val current = profile.value
         viewModelScope.launch {
-            repository.updateLearnerProfile(current.copy(preferredLanguage = lang))
+            repository.updateLearnerProfile(current.copy(studentName = name))
+        }
+    }
+
+    fun resetLearnerProfile() {
+        userPreferencesRepository.resetProfile()
+        viewModelScope.launch {
+            repository.updateLearnerProfile(
+                LearnerProfile(
+                    studentName = "Soumya Ranjan",
+                    educationalBoard = "ODISHA_STATE",
+                    classGrade = "Class 9",
+                    languageMode = AppLanguage.BILINGUAL_EN_HI,
+                    studentId = "student_pilot_01"
+                )
+            )
+        }
+    }
+
+    fun updateLanguage(lang: AppLanguage) {
+        languageManager.setLanguage(lang)
+        userPreferencesRepository.updateLanguageMode(lang)
+        val current = profile.value
+        viewModelScope.launch {
+            repository.updateLearnerProfile(current.copy(languageMode = lang))
         }
     }
 
@@ -93,6 +174,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             repository.resetToPilotDemoPacks()
             _audioCacheSizeMb.value = 12.8
+            _diagramsCacheSizeMb.value = 2.1
             _pendingSyncAttemptsCount.value = 3
         }
     }

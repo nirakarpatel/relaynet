@@ -45,7 +45,7 @@ data class LearnerProfileEntity(
                 profileId = profile.studentId,
                 name = profile.name,
                 board = profile.board.name,
-                grade = profile.classGrade,
+                grade = profile.gradeInt,
                 languagePreference = profile.preferredLanguage.name
             )
         }
@@ -126,23 +126,27 @@ data class TutorMessageEntity(
     val senderName: String,
     val textOdia: String,
     val textEnglish: String,
+    val textHindi: String = "",
     val timestamp: Long,
     val isOfflineGrounded: Boolean,
     val sourceChapter: String?,
     val isStudyRelated: Boolean = true,
     val isCloudAI: Boolean = false,
-    val sourceTagsJson: String = "[]"
+    val sourceTagsJson: String = "[]",
+    val isNemotronReasoning: Boolean = false
 ) {
     fun toDomain(): TutorMessage = TutorMessage(
         id = messageId,
         sender = try { TutorSender.valueOf(senderName) } catch (_: Exception) { TutorSender.USER },
         textOdia = textOdia,
         textEnglish = textEnglish,
+        textHindi = textHindi,
         timestamp = timestamp,
         isOfflineGrounded = isOfflineGrounded,
         sourceChapter = sourceChapter,
         isStudyRelated = isStudyRelated,
         isCloudAI = isCloudAI,
+        isNemotronReasoning = isNemotronReasoning,
         sourceTags = QuizAttemptEntity.parseTags(sourceTagsJson)
     )
 
@@ -152,11 +156,13 @@ data class TutorMessageEntity(
             senderName = msg.sender.name,
             textOdia = msg.textOdia,
             textEnglish = msg.textEnglish,
+            textHindi = msg.textHindi,
             timestamp = msg.timestamp,
             isOfflineGrounded = msg.isOfflineGrounded,
             sourceChapter = msg.sourceChapter,
             isStudyRelated = msg.isStudyRelated,
             isCloudAI = msg.isCloudAI,
+            isNemotronReasoning = msg.isNemotronReasoning,
             sourceTagsJson = if (msg.sourceTags.isEmpty()) "[]" else JSONArray(msg.sourceTags).toString()
         )
     }
