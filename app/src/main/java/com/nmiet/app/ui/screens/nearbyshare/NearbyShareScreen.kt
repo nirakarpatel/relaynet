@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -277,7 +279,11 @@ fun NearbyShareScreen(
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Column {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 12.dp)
+                                ) {
                                     Text(
                                         text = "Discovered Mesh Peers",
                                         fontWeight = FontWeight.Bold,
@@ -291,22 +297,28 @@ fun NearbyShareScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
                             Button(
                                 onClick = { if (isScanning) viewModel.stopScanning() else viewModel.startScanning() },
+                                modifier = Modifier
+                                    .wrapContentWidth()
+                                    .defaultMinSize(minHeight = 44.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isScanning) MaterialTheme.colorScheme.error else PrimaryBlue
                                 ),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isScanning) Icons.Default.Stop else Icons.AutoMirrored.Filled.BluetoothSearching,
                                     contentDescription = null,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (isScanning) "Stop" else "Scan Radar", fontSize = 11.sp, maxLines = 1)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isScanning) "Stop" else "Scan Radar",
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    style = MaterialTheme.typography.labelLarge
+                                )
                             }
                         }
 
