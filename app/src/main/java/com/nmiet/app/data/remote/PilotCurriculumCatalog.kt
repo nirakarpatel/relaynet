@@ -369,6 +369,18 @@ object PilotCurriculumCatalog {
     fun getLocalTutorResponse(query: String): Pair<String, String> {
         val q = query.lowercase()
         return when {
+            q.contains("photosynthesis") || q.contains("ଆଲୋକ ଶ୍ଳେଷଣ") || q.contains("प्रकाश संश्लेषण") -> {
+                Pair(
+                    "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ଏକ ଜୈବ-ରାସାୟନିକ ପ୍ରକ୍ରିୟା ଯାହା ଦ୍ୱାରା ସବୁଜ ଉଦ୍ଭିଦମାନେ ସୂର୍ଯ୍ୟାଲୋକ ଓ କ୍ଲୋରୋଫିଲ୍ ଉପସ୍ଥିତିରେ ଅଙ୍ଗାରକାମ୍ଳ (CO₂) ଓ ଜଳ (H₂O) ବ୍ୟବହାର କରି ଶର୍କରା ଜାତୀୟ ଖାଦ୍ୟ ପ୍ରସ୍ତୁତି କରନ୍ତି ଏବଂ ଅମ୍ଳଜାନ (O₂) ଗ୍ୟାସ୍ ନିର୍ଗତ କରନ୍ତି।",
+                    "Photosynthesis is the biochemical process by which green plants utilize sunlight and chlorophyll to synthesize carbohydrate food (glucose) from carbon dioxide (CO₂) and water (H₂O), liberating oxygen (O₂) gas."
+                )
+            }
+            q.contains("equation") || q.contains("formula") || q.contains("ସମୀକରଣ") || q.contains("समीकरण") -> {
+                Pair(
+                    "ଆଲୋକ ଶ୍ଳେଷଣର ସମତୁଲ ରାସାୟନିକ ସମୀକରଣ:\n6CO₂ + 12H₂O ──[ସୂର୍ଯ୍ୟାଲୋକ / କ୍ଲୋରୋଫିଲ୍]──> C₆H₁₂O₆ + 6O₂ + 6H₂O",
+                    "Balanced chemical equation of photosynthesis:\n6CO₂ + 12H₂O ──[Sunlight / Chlorophyll]──> C₆H₁₂O₆ + 6O₂ + 6H₂O"
+                )
+            }
             q.contains("oxygen") || q.contains("ଅମ୍ଳଜାନ") || q.contains("h2o") || q.contains("water") || q.contains("ऑक्सीजन") -> {
                 Pair(
                     "ଆଲୋକ ଶ୍ଳେଷଣରେ ଅମ୍ଳଜାନ (O₂) ମୁଖ୍ୟତଃ ଜଳର ଫୋଟୋଲିସିସ୍ (Photolysis of H₂O) ପ୍ରକ୍ରିୟାରୁ ନିର୍ଗତ ହୁଏ। ଏହା ଅଙ୍ଗାରକାମ୍ଳ (CO₂) ରୁ ଆସେ ନାହିଁ। କ୍ଲୋରୋପ୍ଲାଷ୍ଟର ଗ୍ରାନା (Grana) ରେ ଆଲୋକ ଉପସ୍ଥିତିରେ 2H₂O ──> 4H⁺ + 4e⁻ + O₂ ପ୍ରକ୍ରିୟା ଘଟେ।",
