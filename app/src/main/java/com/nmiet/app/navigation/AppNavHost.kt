@@ -70,6 +70,10 @@ import com.nmiet.app.ui.screens.quiz.QuizViewModel
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorScreen
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
+import com.nmiet.app.ai.llm.LiteRtLocalLlmEngine
+import com.nmiet.app.ai.llm.LocalModelManager
+import com.nmiet.app.ui.screens.playground.LocalAiPlaygroundScreen
+import com.nmiet.app.ui.screens.playground.LocalAiPlaygroundViewModel
 import com.nmiet.app.ui.theme.PrimaryBlue
 
 @Composable
@@ -139,8 +143,10 @@ fun AppNavHost(
             currentRoute?.startsWith("quiz") == true ||
             currentRoute?.startsWith("notes") == true ||
             currentRoute?.startsWith("custom_quiz") == true ||
-            currentRoute == Routes.LOGIN ||
-            currentRoute == Routes.PROFILE_COMPLETION
+            currentRoute?.startsWith("downloads") == true ||
+            currentRoute?.startsWith("study_planner") == true ||
+            currentRoute?.startsWith("teacher_tools") == true ||
+            currentRoute?.startsWith(Routes.LOCAL_AI_PLAYGROUND) == true
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -235,6 +241,12 @@ fun AppNavHost(
                         },
                         onGenerateNotes = { packId ->
                             navController.navigate(Routes.notesView(packId))
+                        },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS)
+                        },
+                        onOpenStudyPlanner = {
+                            navController.navigate(Routes.STUDY_PLANNER)
                         }
                     )
                 }
@@ -311,9 +323,14 @@ fun AppNavHost(
 
                 // Backward-compatibility: redirect legacy settings route to AppSettingsScreen
                 composable(Routes.SETTINGS) {
-                    AppSettingsScreen(
-                        navController = navController,
-                        settingsViewModel = settingsViewModel
+                    SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onOpenTeacherTools = {
+                            navController.navigate(Routes.TEACHER_TOOLS)
+                        },
+                        onOpenLocalAiPlayground = {
+                            navController.navigate(Routes.LOCAL_AI_PLAYGROUND)
+                        }
                     )
                 }
 
@@ -423,49 +440,40 @@ fun AppNavHost(
                     )
                 }
 
-                // Authentication & Profile Completion Screens
-                composable(Routes.LOGIN) {
-                    val authViewModel: com.nmiet.app.ui.screens.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                        com.nmiet.app.ui.screens.auth.AuthViewModel(repository)
-                    }
-                    com.nmiet.app.ui.screens.auth.LoginScreen(
-                        viewModel = authViewModel,
-                        onNavigateToHome = {
-                            navController.navigate(Routes.CURRICULUM) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    inclusive = false
-                                }
-                                launchSingleTop = true
-                            }
-                        },
-                        onNavigateToProfileCompletion = {
-                            navController.navigate(Routes.PROFILE_COMPLETION) {
-                                launchSingleTop = true
-                            }
-                        },
-                        onBackClick = {
-                            navController.popBackStack()
+                composable(Routes.DOWNLOADS) {
+                    com.nmiet.app.ui.screens.downloads.DownloadsScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() },
+                        onOpenLesson = { packId -> navController.navigate(Routes.lessonReader(packId)) }
+                    )
+                }
+
+                composable(Routes.STUDY_PLANNER) {
+                    com.nmiet.app.ui.screens.studyplanner.StudyPlannerScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() },
+                        onStartPractice = { topicId ->
+                            navController.navigate(Routes.customQuiz(topicId))
                         }
                     )
                 }
 
-                composable(Routes.PROFILE_COMPLETION) {
-                    val authViewModel: com.nmiet.app.ui.screens.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                        com.nmiet.app.ui.screens.auth.AuthViewModel(repository)
+                composable(Routes.TEACHER_TOOLS) {
+                    com.nmiet.app.ui.screens.teacher.TeacherToolsScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Routes.LOCAL_AI_PLAYGROUND) {
+                    val playgroundViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        val modelManager = LocalModelManager(context.applicationContext)
+                        val engine = LiteRtLocalLlmEngine(context.applicationContext)
+                        LocalAiPlaygroundViewModel(modelManager, engine)
                     }
-                    com.nmiet.app.ui.screens.auth.ProfileCompletionScreen(
-                        viewModel = authViewModel,
-                        onProfileCompleted = {
-                            navController.navigate(Routes.CURRICULUM) {
-                                popUpTo(Routes.LOGIN) {
-                                    inclusive = true
-                                }
-                                launchSingleTop = true
-                            }
-                        },
-                        onBackClick = {
-                            navController.popBackStack()
-                        }
+                    LocalAiPlaygroundScreen(
+                        viewModel = playgroundViewModel,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }

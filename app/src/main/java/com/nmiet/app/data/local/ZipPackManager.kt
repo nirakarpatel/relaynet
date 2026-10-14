@@ -177,4 +177,45 @@ object ZipPackManager {
             isChecksumValid = isChecksumValid
         )
     }
+
+    /**
+     * Generates a valid standard .zip learning pack containing manifest.json and lessons.
+     */
+    fun createPackZip(pack: LearningPack, outputFile: File): File {
+        outputFile.parentFile?.mkdirs()
+        val manifestJson = JSONObject().apply {
+            put("pack_id", pack.packId)
+            put("board", pack.board.name)
+            put("class_grade", pack.classGrade)
+            put("subject", pack.subject)
+            put("version", pack.version)
+            put("sha256_checksum", "")
+        }.toString(2)
+
+        val odiaJson = JSONObject().apply {
+            put("title", pack.titleOdia)
+            put("overview", pack.lesson.summaryOdia)
+            put("equation", pack.lesson.equationOrFormula ?: "")
+        }.toString(2)
+
+        val englishJson = JSONObject().apply {
+            put("title", pack.titleEnglish)
+            put("overview", pack.lesson.summaryEnglish)
+        }.toString(2)
+
+        java.util.zip.ZipOutputStream(java.io.FileOutputStream(outputFile)).use { zos ->
+            zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+            zos.write(manifestJson.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+
+            zos.putNextEntry(java.util.zip.ZipEntry("lesson/odia.json"))
+            zos.write(odiaJson.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+
+            zos.putNextEntry(java.util.zip.ZipEntry("lesson/english.json"))
+            zos.write(englishJson.toByteArray(Charsets.UTF_8))
+            zos.closeEntry()
+        }
+        return outputFile
+    }
 }
