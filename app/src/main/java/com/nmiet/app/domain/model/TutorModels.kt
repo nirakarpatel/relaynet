@@ -18,7 +18,8 @@ data class TutorMessage(
     val isStudyRelated: Boolean = true,
     val imageBitmap: Bitmap? = null,
     val sourceTags: List<String> = emptyList(),
-    val isCloudAI: Boolean = false
+    val isCloudAI: Boolean = false,
+    val isNemotronReasoning: Boolean = false
 ) {
     fun getPrimaryText(language: AppLanguage): String = when (language) {
         AppLanguage.ENGLISH_ONLY -> textEnglish

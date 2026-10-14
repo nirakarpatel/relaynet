@@ -26,14 +26,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,6 +52,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +62,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -90,8 +100,12 @@ fun AppSettingsScreen(
     val isBluetoothEnabled by settingsViewModel.isBluetoothEnabled.collectAsState()
 
     val audioCacheSizeMb by settingsViewModel.audioCacheSizeMb.collectAsState()
+    val diagramsCacheSizeMb by settingsViewModel.diagramsCacheSizeMb.collectAsState()
     val coreDataSizeMb by settingsViewModel.coreDataSizeMb.collectAsState()
     val pendingSyncAttemptsCount by settingsViewModel.pendingSyncAttemptsCount.collectAsState()
+    val configuredApiKey by settingsViewModel.nvidiaApiKey.collectAsState()
+    var apiKeyInput by remember(configuredApiKey) { mutableStateOf(configuredApiKey) }
+    var isApiKeyVisible by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -239,7 +253,17 @@ fun AppSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = "• Cached Audio Assets:", fontSize = 13.sp)
+                        Text(text = "• Generated Flowcharts & Diagrams:", fontSize = 13.sp)
+                        Text(text = "${"%.1f".format(diagramsCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "• Cached Audio:", fontSize = 13.sp)
                         Text(text = "${"%.1f".format(audioCacheSizeMb)} MB", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = WarningAmber)
                     }
 
@@ -251,34 +275,54 @@ fun AppSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + audioCacheSizeMb)} MB",
+                            text = "Total Footprint: ${"%.1f".format(coreDataSizeMb + diagramsCacheSizeMb + audioCacheSizeMb)} MB",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
 
-                        // Clear Audio Cache button
-                        Button(
-                            onClick = {
-                                val freedMb = audioCacheSizeMb
-                                settingsViewModel.clearAudioCache()
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar(
-                                        message = "Audio cache cleared (${"%.1f".format(freedMb)} MB freed). Room SQLite quiz progress preserved."
-                                    )
-                                }
-                            },
-                            enabled = audioCacheSizeMb > 0,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear Audio Cache", fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Clear Diagram Cache button
+                            OutlinedButton(
+                                onClick = {
+                                    val freedMb = diagramsCacheSizeMb
+                                    settingsViewModel.clearDiagramCache()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Diagram cache cleared (${"%.1f".format(freedMb)} MB freed)."
+                                        )
+                                    }
+                                },
+                                enabled = diagramsCacheSizeMb > 0,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text("Clear Diagrams", fontSize = 11.sp)
+                            }
+
+                            // Clear Audio Cache button
+                            Button(
+                                onClick = {
+                                    val freedMb = audioCacheSizeMb
+                                    settingsViewModel.clearAudioCache()
+                                    coroutineScope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Audio cache cleared (${"%.1f".format(freedMb)} MB freed). Room SQLite quiz progress preserved."
+                                        )
+                                    }
+                                },
+                                enabled = audioCacheSizeMb > 0,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Clear Audio", fontSize = 11.sp)
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Clearing audio cache safely frees space while preserving learner Room SQLite quiz progress.",
+                        text = "Clearing audio or diagram cache safely frees space while preserving learner Room SQLite quiz progress.",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -543,7 +587,135 @@ fun AppSettingsScreen(
                 Text("Reset & Reload Class 9 Science Pilot Pack")
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Section 6: Cloud AI & NVIDIA NIM API Key Configuration
+            Text(
+                text = "Cloud AI & NVIDIA NIM API Key",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = PrimaryBlue)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "NVIDIA NIM / Cloud API Key",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Add your API key manually for Nemotron-3-Super reasoning, Llama-3.2 Vision OCR, and FLUX.2 diagram generation.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("API Key (nvapi-...)") },
+                        placeholder = { Text("nvapi-xxxxxxxxxxxxxxxxxxxxxxxx") },
+                        singleLine = true,
+                        visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                                Icon(
+                                    imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (isApiKeyVisible) "Hide Key" else "Show Key"
+                                )
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (configuredApiKey.isNotBlank())
+                                "Status: Active (${configuredApiKey.take(7)}••••${configuredApiKey.takeLast(4)})"
+                            else
+                                "Status: Offline / Fallback Mode",
+                            fontSize = 11.sp,
+                            color = if (configuredApiKey.isNotBlank()) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        if (configuredApiKey.isNotBlank()) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                apiKeyInput = ""
+                                settingsViewModel.clearNvidiaApiKey()
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("API Key cleared. Reverted to offline fallback.")
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = configuredApiKey.isNotBlank() || apiKeyInput.isNotBlank()
+                        ) {
+                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Clear")
+                        }
+
+                        Button(
+                            onClick = {
+                                settingsViewModel.saveNvidiaApiKey(apiKeyInput)
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("API Key saved successfully for NVIDIA NIM services.")
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = apiKeyInput.isNotBlank() && apiKeyInput != configuredApiKey
+                        ) {
+                            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Save Key")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Blueprint Footer Card
             Card(

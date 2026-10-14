@@ -132,7 +132,8 @@ data class TutorMessageEntity(
     val sourceChapter: String?,
     val isStudyRelated: Boolean = true,
     val isCloudAI: Boolean = false,
-    val sourceTagsJson: String = "[]"
+    val sourceTagsJson: String = "[]",
+    val isNemotronReasoning: Boolean = false
 ) {
     fun toDomain(): TutorMessage = TutorMessage(
         id = messageId,
@@ -145,6 +146,7 @@ data class TutorMessageEntity(
         sourceChapter = sourceChapter,
         isStudyRelated = isStudyRelated,
         isCloudAI = isCloudAI,
+        isNemotronReasoning = isNemotronReasoning,
         sourceTags = QuizAttemptEntity.parseTags(sourceTagsJson)
     )
 
@@ -160,6 +162,7 @@ data class TutorMessageEntity(
             sourceChapter = msg.sourceChapter,
             isStudyRelated = msg.isStudyRelated,
             isCloudAI = msg.isCloudAI,
+            isNemotronReasoning = msg.isNemotronReasoning,
             sourceTagsJson = if (msg.sourceTags.isEmpty()) "[]" else JSONArray(msg.sourceTags).toString()
         )
     }

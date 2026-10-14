@@ -99,7 +99,8 @@ data class LearningPack(
     val peerSenderName: String? = null,
     val sourceAttribution: String = "Odisha State Bureau of Textbook Preparation & NCERT Curriculum",
     val origin: ContentOrigin = ContentOrigin.INTERNET_DOWNLOADED,
-    val receivedTimestamp: Long = System.currentTimeMillis()
+    val receivedTimestamp: Long = System.currentTimeMillis(),
+    val diagramLocalPath: String? = null
 ) {
     fun getTitle(language: AppLanguage): String = when (language) {
         AppLanguage.ENGLISH_ONLY -> titleEnglish

@@ -59,6 +59,7 @@ object ZipPackManager {
         var manifestContent: String? = null
         var lessonOdiaContent: String? = null
         var lessonEnglishContent: String? = null
+        var diagramLocalPath: String? = null
 
         ZipInputStream(FileInputStream(zipFile)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
@@ -94,6 +95,9 @@ object ZipPackManager {
                         entry.name == "manifest.json" -> manifestContent = targetFile.readText()
                         entry.name == "lesson/odia.json" -> lessonOdiaContent = targetFile.readText()
                         entry.name == "lesson/english.json" -> lessonEnglishContent = targetFile.readText()
+                        entry.name.startsWith("diagrams/") && (entry.name.endsWith(".jpg", ignoreCase = true) || entry.name.endsWith(".png", ignoreCase = true) || entry.name.endsWith(".webp", ignoreCase = true)) -> {
+                            diagramLocalPath = targetFile.absolutePath
+                        }
                     }
                 }
                 zis.closeEntry()
@@ -107,6 +111,20 @@ object ZipPackManager {
         val manifestObj = if (manifestContent != null) JSONObject(manifestContent) else JSONObject()
         val expectedSha = manifestObj.optString("sha256_checksum", "")
         val isChecksumValid = expectedSha.isEmpty() || expectedSha.equals(calculatedSha, ignoreCase = true)
+
+        if (diagramLocalPath == null && manifestObj.has("diagrams")) {
+            val diagramsArray = manifestObj.optJSONArray("diagrams")
+            if (diagramsArray != null && diagramsArray.length() > 0) {
+                val firstDiagram = diagramsArray.optJSONObject(0)
+                val relFile = firstDiagram?.optString("file", "") ?: ""
+                if (relFile.isNotEmpty()) {
+                    val f = File(canonicalDestDir, relFile)
+                    if (f.exists()) {
+                        diagramLocalPath = f.absolutePath
+                    }
+                }
+            }
+        }
 
         val packId = manifestObj.optString("pack_id", "relaynet_extracted_${System.currentTimeMillis()}")
         val boardStr = manifestObj.optString("board", "ODISHA_STATE")
@@ -148,7 +166,8 @@ object ZipPackManager {
             checksumSha256 = calculatedSha,
             isDownloaded = true,
             isReceivedViaMesh = false,
-            peerSenderName = null
+            peerSenderName = null,
+            diagramLocalPath = diagramLocalPath
         )
 
         return ExtractedPackResult(
