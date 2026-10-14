@@ -74,6 +74,8 @@ import com.nmiet.app.domain.model.TransferState
 import com.nmiet.app.ui.components.AppTopBar
 import com.nmiet.app.ui.components.DemoModeBadge
 import com.nmiet.app.ui.components.EmptyView
+import com.nmiet.app.ui.components.LocalizedText
+import com.nmiet.app.ui.components.MultilingualString
 import com.nmiet.app.ui.theme.PrimaryBlue
 import com.nmiet.app.ui.theme.SuccessGreen
 
@@ -114,8 +116,13 @@ fun NearbyShareScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 96.dp // Guaranteed clearance above bottom bar + floating mic
+            )
         ) {
             item {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -412,10 +419,14 @@ fun NearbyShareScreen(
             if (shareDirection == ShareDirection.SEND) {
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Manifest Selection Checklist (ପାଠ ବାଛନ୍ତୁ)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                    LocalizedText(
+                        text = MultilingualString(
+                            english = "Manifest Selection Checklist",
+                            odia = "ପାଠ ତାଲିକା ଚୟନ",
+                            hindi = "पाठ चयन सूची"
+                        ),
+                        currentLanguageFlow = viewModel.currentLanguage,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
                         text = "Check learning packs from local Room SQLite database to include in transfer manifest.",
@@ -465,7 +476,7 @@ fun NearbyShareScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(96.dp))
             }
         }
     }

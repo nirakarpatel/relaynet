@@ -104,8 +104,15 @@ fun QuizRunnerScreen(
                     tint = if (scorePercent >= 70) SuccessGreen else WarningAmber
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                val completedTitle = when (language) {
+                    AppLanguage.ENGLISH_ONLY -> "Quiz Completed!"
+                    AppLanguage.ODIA_ONLY -> "କୁଇଜ୍ ସମ୍ପୂର୍ଣ୍ଣ!"
+                    AppLanguage.HINDI_ONLY -> "प्रश्नोत्तरी संपन्न!"
+                    AppLanguage.BILINGUAL_EN_HI -> "Quiz Completed! (प्रश्नोत्तरी पूर्ण)"
+                    AppLanguage.BILINGUAL_EN_OR -> "Quiz Completed! (କୁଇଜ୍ ସମ୍ପୂର୍ଣ୍ଣ)"
+                }
                 Text(
-                    text = "Quiz Completed! (କୁଇଜ୍ ସମ୍ପୂର୍ଣ୍ଣ)",
+                    text = completedTitle,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )

@@ -1,0 +1,10 @@
+## This file must NOT be checked into Version Control Systems, as it contains information specific to your local configuration.
+# Location of the SDK. This is only used by Gradle.
+sdk.dir=/path/to/Android/Sdk
+
+# 5 separate Gemini API keys for multi-key failover rotator
+gemini.key1=YOUR_GEMINI_KEY_1
+gemini.key2=YOUR_GEMINI_KEY_2
+gemini.key3=YOUR_GEMINI_KEY_3
+gemini.key4=YOUR_GEMINI_KEY_4
+gemini.key5=YOUR_GEMINI_KEY_5

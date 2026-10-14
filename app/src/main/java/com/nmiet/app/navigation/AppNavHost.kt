@@ -1,5 +1,9 @@
 package com.nmiet.app.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -21,12 +25,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -34,9 +42,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.remote.GeminiKeyRotator
 import com.nmiet.app.domain.repository.ContentRepository
 import com.nmiet.app.speech.VoiceAssistantManager
-import com.nmiet.app.ui.components.VoiceOverlayComposable
+import com.nmiet.app.ui.components.VoiceAssistantModal
+import com.nmiet.app.ui.components.VoiceAssistantOverlay
 import com.nmiet.app.ui.screens.curriculum.CurriculumScreen
 import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
 import com.nmiet.app.ui.screens.customquiz.CustomQuizRunnerScreen
@@ -69,11 +80,46 @@ fun AppNavHost(
     nearbyShareViewModel: NearbyShareViewModel,
     masteryViewModel: MasteryViewModel,
     settingsViewModel: SettingsViewModel,
+    languageManager: LanguageManager? = null,
+    geminiKeyRotator: GeminiKeyRotator? = null,
     voiceAssistantManager: VoiceAssistantManager? = null
 ) {
     val context = LocalContext.current
+    val actualLanguageManager = languageManager ?: LanguageManager.getInstance(context.applicationContext)
+    val actualKeyRotator = geminiKeyRotator ?: GeminiKeyRotator.getInstance()
+
     val voiceManager = voiceAssistantManager ?: remember {
-        VoiceAssistantManager(context.applicationContext, repository)
+        VoiceAssistantManager(
+            context = context.applicationContext,
+            repository = repository,
+            languageManager = actualLanguageManager,
+            geminiKeyRotator = actualKeyRotator
+        )
+    }
+
+    var isVoiceAssistantOpen by rememberSaveable { mutableStateOf(false) }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isVoiceAssistantOpen = true
+            voiceManager.startListening()
+        }
+    }
+
+    val onMicClick = {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            isVoiceAssistantOpen = true
+            voiceManager.startListening()
+        } else {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     val navController = rememberNavController()
@@ -149,9 +195,10 @@ fun AppNavHost(
         floatingActionButton = {
             if (!isFullScreen && currentRoute != Screen.Tutor.route) {
                 FloatingActionButton(
-                    onClick = { voiceManager.startListening() },
+                    onClick = onMicClick,
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Icon(imageVector = Icons.Default.Mic, contentDescription = "Voice Assistant")
                 }
@@ -375,15 +422,21 @@ fun AppNavHost(
                 }
             }
 
-            // MODULE 3: Floating Hands-Free Voice Assistant Overlay
-            VoiceOverlayComposable(
+        }
+
+        // Real-Time Conversational Voice Assistant Overlay
+        if (isVoiceAssistantOpen) {
+            VoiceAssistantModal(
                 manager = voiceManager,
+                onDismiss = {
+                    isVoiceAssistantOpen = false
+                    voiceManager.dismiss()
+                },
                 onNavigate = { route ->
                     navController.navigate(route) {
                         launchSingleTop = true
                     }
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                }
             )
         }
     }

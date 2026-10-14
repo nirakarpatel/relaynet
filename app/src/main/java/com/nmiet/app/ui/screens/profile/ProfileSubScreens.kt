@@ -70,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.permissions.NearbyPermissionManager
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.theme.PrimaryBlue
@@ -216,7 +217,8 @@ fun ConnectivityPermissionsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
@@ -235,6 +237,7 @@ fun OfflineContentScreen(
     val coreDataSizeMb by settingsViewModel.coreDataSizeMb.collectAsState()
     val pendingSyncAttemptsCount by settingsViewModel.pendingSyncAttemptsCount.collectAsState()
     val syncStatus by settingsViewModel.syncStatus.collectAsState()
+    val currentLanguage by settingsViewModel.currentLanguage.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -285,7 +288,14 @@ fun OfflineContentScreen(
                     ) {
                         Column {
                             Text("Photosynthesis & Plant Nutrition", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("ଆଲୋକ ଶ୍ଳେଷଣ • Class 9 Science", fontSize = 12.sp, color = PrimaryBlue)
+                            val packSubtitle = when (currentLanguage) {
+                                AppLanguage.ENGLISH_ONLY -> "Life Science • Class 9 Science"
+                                AppLanguage.ODIA_ONLY -> "ଆଲୋକ ଶ୍ଳେଷଣ • Class 9 Science"
+                                AppLanguage.HINDI_ONLY -> "प्रकाश संश्लेषण • Class 9 Science"
+                                AppLanguage.BILINGUAL_EN_HI -> "Photosynthesis (प्रकाश संश्लेषण) • Class 9 Science"
+                                AppLanguage.BILINGUAL_EN_OR -> "ଆଲୋକ ଶ୍ଳେଷଣ • Class 9 Science"
+                            }
+                            Text(packSubtitle, fontSize = 12.sp, color = PrimaryBlue)
                         }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
@@ -433,7 +443,8 @@ fun OfflineContentScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }
@@ -639,7 +650,8 @@ fun AboutRelaynetScreen(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            // Bottom padding to clear NavigationBar and floating voice assistant mic button
+            Spacer(modifier = Modifier.height(96.dp))
         }
     }
 }

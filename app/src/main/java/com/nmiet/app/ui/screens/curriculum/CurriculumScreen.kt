@@ -101,8 +101,13 @@ fun CurriculumScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 96.dp // Guaranteed clearance above bottom bar + floating mic
+            )
         ) {
             item {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -131,14 +136,14 @@ fun CurriculumScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "${profile.name} • Class $selectedGrade",
+                                text = "${profile.studentName} • ${profile.classGrade}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                text = "${selectedBoard.displayName} • ${profile.preferredLanguage.displayName}",
-                                fontSize = 11.sp,
+                                text = "${profile.educationalBoard} • ${profile.languageMode.displayName}",
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
                         }
@@ -321,44 +326,46 @@ fun CurriculumScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Board, Class, Subject Chips Row
+                // Subject Filter Chips Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Board.entries.forEach { board ->
-                        val isSelected = selectedBoard == board
+
+                    val scienceLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Science"
+                        AppLanguage.ODIA_ONLY -> "ବିଜ୍ଞାନ (Science)"
+                        AppLanguage.HINDI_ONLY -> "विज्ञान (Science)"
+                        AppLanguage.BILINGUAL_EN_HI -> "Science (विज्ञान)"
+                        AppLanguage.BILINGUAL_EN_OR -> "Science (ବିଜ୍ଞାନ)"
+                    }
+                    val mathLabel = when (currentLanguage) {
+                        AppLanguage.ENGLISH_ONLY -> "Mathematics"
+                        AppLanguage.ODIA_ONLY -> "ଗଣିତ (Math)"
+                        AppLanguage.HINDI_ONLY -> "गणित (Math)"
+                        AppLanguage.BILINGUAL_EN_HI -> "Mathematics (गणित)"
+                        AppLanguage.BILINGUAL_EN_OR -> "Mathematics (ଗଣିତ)"
+                    }
+
+                    listOf(scienceLabel, mathLabel).forEach { subject ->
+                        val isSelected = (subject == scienceLabel && selectedSubject.contains("Science")) ||
+                                (subject == mathLabel && selectedSubject.contains("Math"))
                         FilterChip(
                             selected = isSelected,
-                            onClick = { viewModel.onBoardSelected(board) },
+                            onClick = {
+                                viewModel.onSubjectSelected(if (subject == scienceLabel) "Science (ବିଜ୍ଞାନ)" else "Mathematics")
+                            },
                             label = {
-                                val labelText = when (board) {
-                                    Board.ODISHA_STATE -> "Odisha BSE"
-                                    Board.CBSE -> "CBSE"
-                                    Board.CISCE_ICSE -> "ICSE"
-                                }
-                                Text(labelText, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                Text(
+                                    text = subject,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
-                        )
-                    }
-
-                    listOf(9, 10).forEach { grade ->
-                        val isSelected = selectedGrade == grade
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.onGradeSelected(grade) },
-                            label = { Text("Class $grade", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
-                        )
-                    }
-
-                    listOf("Science (ବିଜ୍ଞାନ)", "Mathematics").forEach { subject ->
-                        val isSelected = selectedSubject == subject
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { viewModel.onSubjectSelected(subject) },
-                            label = { Text(subject, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) }
                         )
                     }
                 }
@@ -530,7 +537,7 @@ fun CurriculumScreen(
             }
 
             item {
-                Spacer(modifier = Modifier.height(80.dp))
+                Spacer(modifier = Modifier.height(96.dp))
             }
         }
     }

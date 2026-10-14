@@ -360,6 +360,34 @@ object PilotCurriculumCatalog {
                 learningObjectiveEnglish = "Contrast cellular catabolism with photosynthetic synthesis.",
                 packId = null,
                 isAvailableOffline = false
+            ),
+            CurriculumNode(
+                id = "curr-node-10-1",
+                board = Board.ODISHA_STATE,
+                classGrade = 10,
+                subject = "Science (ବିଜ୍ଞାନ / विज्ञान)",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୧: ରାସାୟନିକ ପ୍ରତିକ୍ରିୟା ଓ ସମୀକରଣ",
+                chapterTitleEnglish = "Chapter 1: Chemical Reactions and Equations",
+                topicTitleOdia = "ରାସାୟନିକ ପ୍ରତିକ୍ରିୟାର ପ୍ରକାରଭେଦ ଓ ସନ୍ତୁଳନ",
+                topicTitleEnglish = "Balancing Chemical Reactions & Equations",
+                learningObjectiveOdia = "ରାସାୟନିକ ସମୀକରଣ କିପରି ସମତୁଲ କରିବା ଶିଖିବା।",
+                learningObjectiveEnglish = "Master balancing chemical equations and reaction types.",
+                packId = "relaynet_class10_science_chemical_reactions_v1",
+                isAvailableOffline = true
+            ),
+            CurriculumNode(
+                id = "curr-node-10-2",
+                board = Board.CBSE,
+                classGrade = 10,
+                subject = "Science",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୧: ରାସାୟନିକ ପ୍ରତିକ୍ରିୟା (Chemical Reactions)",
+                chapterTitleEnglish = "Chapter 1: Chemical Reactions and Equations",
+                topicTitleOdia = "ଅକ୍ସିଡେସନ୍ ଓ ରିଡକ୍ସନ୍ ପ୍ରକ୍ରିୟା",
+                topicTitleEnglish = "Oxidation and Reduction Reactions",
+                learningObjectiveOdia = "ଜାରଣ ଓ ବିଜାରଣ ପ୍ରକ୍ରିୟା ବୁଝିବା।",
+                learningObjectiveEnglish = "Understand redox reactions, corrosion and rancidity.",
+                packId = null,
+                isAvailableOffline = false
             )
         )
     }
@@ -438,6 +466,48 @@ object PilotCurriculumCatalog {
                 summaryHindi = "कोशिका सभी जीवित जीवों की मौलिक संरचनात्मक और कार्यात्मक इकाई है। इसकी खोज रॉबर्ट हुक ने 1665 में की थी।",
                 equationOrFormula = null,
                 sections = emptyList()
+            ),
+            quizQuestions = emptyList()
+        )
+    }
+
+    fun getPilotClass10LearningPack(): LearningPack {
+        return LearningPack(
+            packId = "relaynet_class10_science_chemical_reactions_v1",
+            titleOdia = "ଅଧ୍ୟାୟ ୧: ରାସାୟନିକ ପ୍ରତିକ୍ରିୟା ଓ ସମୀକରଣ",
+            titleEnglish = "Chapter 1: Chemical Reactions and Equations",
+            titleHindi = "अध्याय 1: रासायनिक अभिक्रियाएँ एवं समीकरण",
+            board = Board.ODISHA_STATE,
+            classGrade = 10,
+            subject = "Science (ବିଜ୍ଞାନ / विज्ञान)",
+            chapterNumber = 1,
+            chapterOdia = "ଅଧ୍ୟାୟ ୧: ରାସାୟନିକ ପ୍ରତିକ୍ରିୟା",
+            chapterEnglish = "Chapter 1: Chemical Reactions",
+            chapterHindi = "अध्याय 1: रासायनिक अभिक्रियाएँ",
+            topicOdia = "ରାସାୟନିକ ପ୍ରତିକ୍ରିୟାର ପ୍ରକାରଭେଦ ଓ ସନ୍ତୁଳନ",
+            topicEnglish = "Balancing Chemical Reactions & Equations",
+            topicHindi = "रासायनिक समीकरणों का संतुलन एवं प्रकार",
+            version = 1,
+            sizeBytes = 2097152L,
+            checksumSha256 = "d41d8cd98f00b204e9800998ecf8427e123456789abcdef0123456789abcdef0",
+            isDownloaded = true,
+            isReceivedViaMesh = false,
+            sourceAttribution = "Odisha State Board of Secondary Education (BSE) Class 10 Science Curriculum & NCERT",
+            lesson = LessonData(
+                summaryOdia = "ରାସାୟନିକ ପ୍ରତିକ୍ରିୟାରେ ପ୍ରତିକାରକଗୁଡ଼ିକ ମିଶି ନୂତନ ଧର୍ମ ବିଶିଷ୍ଟ ଉତ୍ପାଦ ସୃଷ୍ଟି କରନ୍ତି। ଏଥିରେ ଭୌତିକ ଓ ରାସାୟନିକ ପରିବର୍ତ୍ତନ ଘଟେ।",
+                summaryEnglish = "A chemical reaction is a process where substances undergo transformation to form new substances with distinct chemical identities.",
+                summaryHindi = "रासायनिक अभिक्रिया वह प्रक्रिया है जिसमें एक या अधिक पदार्थ आपस में क्रिया करके नए गुणधर्म वाले पदार्थ बनाते हैं।",
+                equationOrFormula = "2Mg + O₂ ──> 2MgO",
+                sections = listOf(
+                    LessonSection(
+                        titleOdia = "୧. ରାସାୟନିକ ସମୀକରଣ ଓ ସନ୍ତୁଳନ",
+                        titleEnglish = "1. Chemical Equations & Balancing",
+                        titleHindi = "1. रासायनिक समीकरण एवं संतुलन",
+                        contentOdia = "ପ୍ରତୀକ ଓ ସଂକେତ ମାଧ୍ୟମରେ ରାସାୟନିକ ପ୍ରତିକ୍ରିୟାର ସଂକ୍ଷିପ୍ତ ପ୍ରକାଶକୁ ରାସାୟନିକ ସମୀକରଣ କୁହାଯାଏ।",
+                        contentEnglish = "A chemical equation represents the reactant and product molecules using chemical formulas.",
+                        contentHindi = "प्रतीकों और रासायनिक सूत्रों के माध्यम से रासायनिक अभिक्रिया का संक्षिप्त निरूपण रासायनिक समीकरण कहलाता है।"
+                    )
+                )
             ),
             quizQuestions = emptyList()
         )
