@@ -12,6 +12,9 @@ interface NearbyTransferManager {
     fun startScanning()
     fun stopScanning()
     fun sendPackToPeer(peer: PeerDevice, pack: LearningPack)
+    fun acceptConnection(peer: PeerDevice) {}
+    fun rejectConnection(peer: PeerDevice) {}
+    fun sendManifestToPeer(peer: PeerDevice) {}
     fun cancelTransfer()
     fun resetToIdle()
 }

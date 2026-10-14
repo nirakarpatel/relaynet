@@ -29,6 +29,7 @@ object Routes {
     const val DOWNLOADS = "downloads"
     const val STUDY_PLANNER = "study_planner"
     const val TEACHER_TOOLS = "teacher_tools"
+    const val LOCAL_AI_PLAYGROUND = "local_ai_playground"
 
     fun lessonReader(packId: String, section: String? = null): String =
         if (!section.isNullOrBlank()) "lesson/$packId?section=$section" else "lesson/$packId"

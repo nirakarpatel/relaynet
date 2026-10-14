@@ -42,6 +42,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -83,6 +84,7 @@ fun NearbyShareScreen(
     val shareDirection by viewModel.shareDirection.collectAsState()
     val transferState by viewModel.transferState.collectAsState()
     val isDemoMode by viewModel.useDemoMode.collectAsState()
+    val selectedProtocol by viewModel.selectedProtocol.collectAsState()
     val packs by viewModel.learningPacks.collectAsState()
     val selectedPackIds by viewModel.selectedPackIds.collectAsState()
 
@@ -149,41 +151,70 @@ fun NearbyShareScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Demo Simulation Mode Switch Card
+                // Transport Protocol Selector Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(12.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = if (isDemoMode) "Demo Simulation Mode" else "Real Bluetooth RFCOMM",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                if (isDemoMode) DemoModeBadge()
-                            }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
-                                text = if (isDemoMode)
-                                    "Simulates full Bluetooth mesh transfer with progress & SHA-256 validation for presentation."
-                                else
-                                    "Connects directly over Bluetooth RFCOMM channel with nearby Android phones.",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Transport Protocol",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            if (selectedProtocol == TransportProtocol.DEMO_SIMULATION) {
+                                DemoModeBadge()
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.GOOGLE_NEARBY_CONNECTIONS,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.GOOGLE_NEARBY_CONNECTIONS) },
+                                label = { Text("Nearby (P2P)", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.BLUETOOTH_RFCOMM,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.BLUETOOTH_RFCOMM) },
+                                label = { Text("Bluetooth", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.DEMO_SIMULATION,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.DEMO_SIMULATION) },
+                                label = { Text("Demo Mock", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                        Switch(
-                            checked = isDemoMode,
-                            onCheckedChange = { viewModel.setDemoMode(it) }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = when (selectedProtocol) {
+                                TransportProtocol.GOOGLE_NEARBY_CONNECTIONS ->
+                                    "Google Nearby Connections: High-speed Star topology offline P2P."
+                                TransportProtocol.BLUETOOTH_RFCOMM ->
+                                    "Bluetooth RFCOMM: Native direct socket connection without Play Services."
+                                TransportProtocol.DEMO_SIMULATION ->
+                                    "Demo Simulation: Offline test run with simulated progress & SHA-256 validation."
+                            },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -237,6 +268,101 @@ fun NearbyShareScreen(
                             onRetry = { viewModel.startScanning() },
                             onDismiss = { viewModel.resetTransfer() }
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    is TransferState.AuthVerification -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "🔐 Nearby Connection Request",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Peer: ${state.peer.name}\nVerify matching 4-digit authentication code on both devices:",
+                                    fontSize = 12.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(PrimaryBlue)
+                                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                                        .align(Alignment.CenterHorizontally)
+                                ) {
+                                    Text(
+                                        text = state.authenticationDigits,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 24.sp,
+                                        letterSpacing = 4.sp,
+                                        color = Color.White
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.rejectConnection(state.peer) },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Reject")
+                                    }
+                                    Button(
+                                        onClick = { viewModel.acceptConnection(state.peer) },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                                    ) {
+                                        Text("Accept & Connect")
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    is TransferState.ManifestReceived -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Content Manifest Received from ${state.peer.name}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Discovered ${state.manifest.items.size} total items (${state.missingOrUpdatableItems.size} new/updatable for your grade).",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                state.missingOrUpdatableItems.forEach { item ->
+                                    Text("• ${item.title} (${(item.sizeBytes / 1_000_000.0).let { "%.1f".format(it) }} MB, v${item.version})", fontSize = 12.sp)
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { viewModel.sendToPeer(state.peer) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                                ) {
+                                    Text("Send Selected Learning Pack")
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     else -> {}

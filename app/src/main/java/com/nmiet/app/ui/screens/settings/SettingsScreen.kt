@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
@@ -65,7 +66,8 @@ import com.nmiet.app.ui.theme.WarningAmber
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onOpenTeacherTools: () -> Unit = {}
+    onOpenTeacherTools: () -> Unit = {},
+    onOpenLocalAiPlayground: () -> Unit = {}
 ) {
     val profile by viewModel.profile.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
@@ -432,6 +434,21 @@ fun SettingsScreen(
                 Icon(imageVector = Icons.Default.School, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Open Teacher Content Studio (Lecture Pipeline)")
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Local AI Playground (LiteRT-LM On-Device SLM) CTA
+            OutlinedButton(
+                onClick = onOpenLocalAiPlayground,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = PrimaryBlue
+                )
+            ) {
+                Icon(imageVector = Icons.Default.SmartToy, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open Local AI Playground (LiteRT-LM SLM)")
             }
 
             Spacer(modifier = Modifier.height(14.dp))
