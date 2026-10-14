@@ -42,11 +42,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 3. Initialize Transfer Managers with pack ingestion callback
+        // 3. Initialize Transfer Managers with pack & note ingestion callback
         val demoTransferManager = DemoTransferManager(
             scope = lifecycleScope,
             onPackReceivedCallback = { pack, peerName ->
                 repository.saveIncomingLearningPack(pack, peerName)
+            },
+            onNoteReceivedCallback = { note, peerName ->
+                repository.saveGeneratedNote(note)
             }
         )
 
@@ -55,6 +58,12 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             onPackReceivedCallback = { pack, peerName ->
                 repository.saveIncomingLearningPack(pack, peerName)
+            },
+            onNoteReceivedCallback = { note, peerName ->
+                repository.saveGeneratedNote(note)
+            },
+            packLookupProvider = { packId ->
+                repository.getPackByIdOnce(packId)
             }
         )
 
