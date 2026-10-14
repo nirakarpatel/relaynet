@@ -76,14 +76,17 @@ class MainActivity : ComponentActivity() {
             }
         )
 
-        // 4. Initialize Core ViewModels
-        val curriculumViewModel = CurriculumViewModel(repository)
-        val aiTutorViewModel = AITutorViewModel(repository)
+        // 4. Initialize Core ViewModels & Language Engine
+        val languageManager = LanguageManager.getInstance(applicationContext)
+        val userPreferencesRepository = com.nmiet.app.data.repository.UserPreferencesRepository.getInstance(applicationContext)
+        val curriculumViewModel = CurriculumViewModel(repository, languageManager, userPreferencesRepository)
+        val aiTutorViewModel = AITutorViewModel(repository, languageManager)
         val nearbyShareViewModel = NearbyShareViewModel(
             repository = repository,
             demoManager = demoTransferManager,
             bluetoothManager = bluetoothTransferManager,
-            nearbyManager = googleNearbyManager
+            nearbyManager = googleNearbyManager,
+            languageManager = languageManager
         )
         val masteryViewModel = MasteryViewModel(repository, languageManager)
         val settingsViewModel = SettingsViewModel(repository, applicationContext, languageManager, userPreferencesRepository)

@@ -6,16 +6,6 @@ enum class Board(val displayName: String, val code: String) {
     CISCE_ICSE("Indian Certificate of Secondary Education (ICSE)", "CISCE_ICSE")
 }
 
-enum class AppLanguage(val displayName: String, val code: String) {
-    ODIA("ଓଡ଼ିଆ (Odia)", "or"),
-    ENGLISH("English", "en"),
-    BILINGUAL("Bilingual (ଓଡ଼ିଆ + English)", "bi"),
-    HINDI("हिन्दी (Hindi)", "hi"),
-    BENGALI("বাংলা (Bengali)", "bn"),
-    TAMIL("தமிழ் (Tamil)", "ta"),
-    TELUGU("తెలుగు (Telugu)", "te")
-}
-
 data class LearnerProfile(
     val studentId: String = "student_pilot_01",
     val name: String = "Soumya Ranjan",

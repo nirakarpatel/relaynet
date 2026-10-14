@@ -27,6 +27,11 @@ enum class ShareDirection {
     SEND, RECEIVE
 }
 
+enum class ShareModelType {
+    LEARNING_PACK,
+    AI_GENERATED_NOTE
+}
+
 enum class TransportProtocol {
     DEMO_SIMULATION,
     GOOGLE_NEARBY_CONNECTIONS,
@@ -38,7 +43,8 @@ class NearbyShareViewModel(
     private val repository: ContentRepository,
     val demoManager: DemoTransferManager,
     val bluetoothManager: BluetoothTransferManager,
-    val nearbyManager: GoogleNearbyConnectionsManager? = null
+    val nearbyManager: GoogleNearbyConnectionsManager? = null,
+    private val languageManager: LanguageManager? = null
 ) : ViewModel() {
 
     val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
@@ -48,6 +54,9 @@ class NearbyShareViewModel(
 
     private val _shareDirection = MutableStateFlow(ShareDirection.SEND)
     val shareDirection: StateFlow<ShareDirection> = _shareDirection.asStateFlow()
+
+    private val _selectedModelType = MutableStateFlow(ShareModelType.LEARNING_PACK)
+    val selectedModelType: StateFlow<ShareModelType> = _selectedModelType.asStateFlow()
 
     private val _selectedProtocol = MutableStateFlow(TransportProtocol.GOOGLE_NEARBY_CONNECTIONS)
     val selectedProtocol: StateFlow<TransportProtocol> = _selectedProtocol.asStateFlow()
@@ -150,7 +159,7 @@ class NearbyShareViewModel(
 
         _activeManager.value = manager
         manager.resetToIdle()
-        if (!enabled) {
+        if (protocol != TransportProtocol.DEMO_SIMULATION) {
             bluetoothManager.loadBondedDevices()
             bluetoothManager.startServerListening()
         }

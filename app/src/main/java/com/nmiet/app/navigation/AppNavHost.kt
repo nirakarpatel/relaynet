@@ -67,6 +67,7 @@ import com.nmiet.app.ui.screens.profile.PrivacySecurityScreen
 import com.nmiet.app.ui.screens.profile.ProfileScreen
 import com.nmiet.app.ui.screens.quiz.QuizRunnerScreen
 import com.nmiet.app.ui.screens.quiz.QuizViewModel
+import com.nmiet.app.ui.screens.settings.SettingsScreen
 import com.nmiet.app.ui.screens.settings.SettingsViewModel
 import com.nmiet.app.ui.screens.tutor.AITutorScreen
 import com.nmiet.app.ui.screens.tutor.AITutorViewModel
