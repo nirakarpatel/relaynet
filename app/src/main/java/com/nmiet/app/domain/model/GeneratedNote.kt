@@ -135,5 +135,38 @@ data class GeneratedNote(
                 )
             }
         }
+
+        fun createDemoPhotosynthesisNote(): GeneratedNote {
+            return GeneratedNote(
+                noteId = "note_photosynthesis_demo_01",
+                topicId = "relaynet_class9_science_photosynthesis_v1",
+                topicName = "Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)",
+                titleOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ମୁଖ୍ୟ ସାରାଂଶ ଓ ପରୀକ୍ଷା ଟିପ୍ସ",
+                titleEnglish = "Photosynthesis Key Revision Notes & Exam Tips",
+                summaryOdia = "ଆଲୋକ ଶ୍ଳେଷଣ ହେଉଛି ଏକ ଜୈବ-ରାସାୟନିକ ପ୍ରକ୍ରିୟା ଯେଉଁଥିରେ ସୂର୍ଯ୍ୟାଲୋକ ଏବଂ କ୍ଲୋରୋଫିଲ ସାହାଯ୍ୟରେ ଶର୍କରା ଉତ୍ପନ୍ନ ହୁଏ।",
+                summaryEnglish = "Photosynthesis is the biochemical process by which green plants convert light energy into chemical energy, generating glucose and oxygen from water and CO₂.",
+                keyConcepts = listOf(
+                    NoteConceptPoint(
+                        pointOdia = "ଆଲୋକ ପ୍ରକ୍ରିୟା ଥାଇଲାକଏଡ୍ (Thylakoid) ରେ ସଂଘଠିତ ହୋଇ ATP ଓ NADPH ଉତ୍ପନ୍ନ କରେ।",
+                        pointEnglish = "Light-dependent reactions occur in the thylakoids producing ATP and NADPH via water photolysis."
+                    ),
+                    NoteConceptPoint(
+                        pointOdia = "ଅନ୍ଧକାର ପ୍ରକ୍ରିୟା ଷ୍ଟ୍ରୋମା (Stroma) ରେ କାର୍ବନ ଡାଇଅକ୍ସାଇଡ୍ ସ୍ଥିରୀକରଣ କରେ।",
+                        pointEnglish = "Dark reactions (Calvin Cycle) take place in the stroma to fix CO₂ into glucose."
+                    )
+                ),
+                formulasEquations = listOf(
+                    "6CO₂ + 12H₂O ──[Light / Chlorophyll]──> C₆H₁₂O₆ + 6O₂ + 6H₂O",
+                    "2H₂O ──[Photolysis]──> 4H⁺ + 4e⁻ + O₂ ↑"
+                ),
+                examTips = listOf(
+                    "Oxygen released during photosynthesis comes entirely from water (H₂O), NOT from carbon dioxide (CO₂).",
+                    "Chlorophyll absorbs Blue and Red wavelengths most strongly, reflecting Green light."
+                ),
+                createdAt = System.currentTimeMillis(),
+                isBookmarked = true,
+                isOfflineGenerated = true
+            )
+        }
     }
 }

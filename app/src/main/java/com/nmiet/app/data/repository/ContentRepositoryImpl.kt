@@ -669,6 +669,114 @@ class ContentRepositoryImpl(
         }
     }
 
+    override suspend fun loginWithEmail(email: String, password: String): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.signInWithEmail(email, password)
+            if (authRes.isFailure) {
+                return@withContext Result.failure(authRes.exceptionOrNull() ?: Exception("Login failed"))
+            }
+            val authData = authRes.getOrThrow()
+            val current = _learnerProfile.value
+            val updated = current.copy(
+                studentId = authData.uid,
+                email = authData.email,
+                name = authData.displayName ?: current.name,
+                avatarUrl = authData.photoUrl ?: current.avatarUrl,
+                isLoggedIn = true,
+                authProvider = if (authData.isFirebaseBacked) "FIREBASE_EMAIL" else "EMAIL",
+                sessionToken = authData.idToken ?: "tok_${System.currentTimeMillis()}"
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Successfully signed in as ${updated.name} via ${if (authData.isFirebaseBacked) "Firebase" else "RelayNet ID"}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun registerWithEmail(
+        name: String,
+        email: String,
+        password: String,
+        classGrade: Int,
+        board: com.nmiet.app.domain.model.Board
+    ): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.createUserWithEmail(email, password)
+            if (authRes.isFailure) {
+                return@withContext Result.failure(authRes.exceptionOrNull() ?: Exception("Registration failed"))
+            }
+            val authData = authRes.getOrThrow()
+            val updated = LearnerProfile(
+                studentId = authData.uid,
+                name = name.trim(),
+                email = authData.email,
+                classGrade = classGrade,
+                board = board,
+                isLoggedIn = true,
+                authProvider = if (authData.isFirebaseBacked) "FIREBASE_EMAIL" else "EMAIL",
+                sessionToken = authData.idToken ?: "tok_${System.currentTimeMillis()}",
+                isProfileCompleted = true
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Account registered for $name (Class $classGrade) via ${if (authData.isFirebaseBacked) "Firebase" else "RelayNet ID"}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun loginWithGoogle(
+        idToken: String?,
+        email: String,
+        name: String,
+        avatarUrl: String?
+    ): Result<LearnerProfile> = withContext(ioDispatcher) {
+        try {
+            val authRes = com.nmiet.app.auth.FirebaseAuthManager.signInWithGoogleIdToken(
+                idToken = idToken ?: "google_token_${System.currentTimeMillis()}",
+                fallbackEmail = email,
+                fallbackName = name
+            )
+            val authData = authRes.getOrNull()
+            val current = _learnerProfile.value
+            val isNewProfile = current.name.isBlank() || current.name == "Soumya Ranjan"
+            val updated = current.copy(
+                studentId = authData?.uid ?: "usr_google_${System.currentTimeMillis()}",
+                email = authData?.email ?: email,
+                name = if (name.isNotBlank() && name != "Google Learner") name else (authData?.displayName ?: current.name),
+                avatarUrl = authData?.photoUrl ?: avatarUrl ?: "https://api.dicebear.com/7.x/bottts/svg?seed=$name",
+                isLoggedIn = true,
+                authProvider = if (authData?.isFirebaseBacked == true) "FIREBASE_GOOGLE" else "GOOGLE",
+                sessionToken = authData?.idToken ?: idToken ?: "tok_google_${System.currentTimeMillis()}",
+                isProfileCompleted = !isNewProfile
+            )
+            _learnerProfile.value = updated
+            _syncStatus.update {
+                it.copy(lastSyncMessage = "Signed in with Google as ${updated.name}.")
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun logout() = withContext(ioDispatcher) {
+        val current = _learnerProfile.value
+        _learnerProfile.value = current.copy(
+            isLoggedIn = false,
+            authProvider = "GUEST",
+            sessionToken = ""
+        )
+        _syncStatus.update {
+            it.copy(lastSyncMessage = "Signed out. Operating in Guest/Offline mode.")
+        }
+    }
+
     override fun getAllGeneratedNotesFlow(): Flow<List<GeneratedNote>> =
         learningDao.getAllGeneratedNotes().map { list -> list.map { it.toDomain() } }
 
