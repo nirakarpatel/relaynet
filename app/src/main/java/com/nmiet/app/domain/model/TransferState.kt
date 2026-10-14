@@ -15,6 +15,18 @@ sealed interface TransferState {
         val connectedPeer: PeerDevice
     ) : TransferState
 
+    data class AuthVerification(
+        val peer: PeerDevice,
+        val authenticationDigits: String,
+        val isIncoming: Boolean
+    ) : TransferState
+
+    data class ManifestReceived(
+        val peer: PeerDevice,
+        val manifest: PeerContentManifest,
+        val missingOrUpdatableItems: List<ContentManifestItem>
+    ) : TransferState
+
     data class Transferring(
         val peer: PeerDevice,
         val isOutgoing: Boolean,
