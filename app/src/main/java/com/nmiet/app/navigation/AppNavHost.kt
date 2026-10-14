@@ -4,8 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.FloatingActionButton
@@ -85,6 +87,8 @@ fun AppNavHost(
             currentRoute?.startsWith("custom_quiz") == true
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
         bottomBar = {
             AnimatedVisibility(
                 visible = !isFullScreen,
@@ -123,7 +127,7 @@ fun AppNavHost(
             }
         },
         floatingActionButton = {
-            if (!isFullScreen) {
+            if (!isFullScreen && currentRoute != Screen.AITutor.route) {
                 FloatingActionButton(
                     onClick = { voiceManager.startListening() },
                     containerColor = PrimaryBlue,
@@ -137,7 +141,7 @@ fun AppNavHost(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             NavHost(
                 navController = navController,
