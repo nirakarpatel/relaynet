@@ -12,6 +12,7 @@ import com.nmiet.app.domain.model.TransferState
 import com.nmiet.app.domain.repository.ContentRepository
 import com.nmiet.app.nearby.BluetoothTransferManager
 import com.nmiet.app.nearby.DemoTransferManager
+import com.nmiet.app.nearby.GoogleNearbyConnectionsManager
 import com.nmiet.app.nearby.NearbyTransferManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,9 +27,10 @@ enum class ShareDirection {
     SEND, RECEIVE
 }
 
-enum class ShareModelType {
-    LEARNING_PACK,
-    AI_GENERATED_NOTE
+enum class TransportProtocol {
+    DEMO_SIMULATION,
+    GOOGLE_NEARBY_CONNECTIONS,
+    BLUETOOTH_RFCOMM
 }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -36,7 +38,7 @@ class NearbyShareViewModel(
     private val repository: ContentRepository,
     val demoManager: DemoTransferManager,
     val bluetoothManager: BluetoothTransferManager,
-    val languageManager: LanguageManager? = null
+    val nearbyManager: GoogleNearbyConnectionsManager? = null
 ) : ViewModel() {
 
     val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
@@ -47,13 +49,13 @@ class NearbyShareViewModel(
     private val _shareDirection = MutableStateFlow(ShareDirection.SEND)
     val shareDirection: StateFlow<ShareDirection> = _shareDirection.asStateFlow()
 
-    private val _selectedModelType = MutableStateFlow(ShareModelType.LEARNING_PACK)
-    val selectedModelType: StateFlow<ShareModelType> = _selectedModelType.asStateFlow()
+    private val _selectedProtocol = MutableStateFlow(TransportProtocol.GOOGLE_NEARBY_CONNECTIONS)
+    val selectedProtocol: StateFlow<TransportProtocol> = _selectedProtocol.asStateFlow()
 
-    private val _useDemoMode = MutableStateFlow(false) // Default to Real Bluetooth for real P2P!
+    private val _useDemoMode = MutableStateFlow(false)
     val useDemoMode: StateFlow<Boolean> = _useDemoMode.asStateFlow()
 
-    private val _activeManager = MutableStateFlow<NearbyTransferManager>(bluetoothManager)
+    private val _activeManager = MutableStateFlow<NearbyTransferManager>(nearbyManager ?: bluetoothManager)
 
     val transferState: StateFlow<TransferState> = _activeManager.flatMapLatest { manager ->
         manager.transferState
@@ -131,13 +133,39 @@ class NearbyShareViewModel(
 
     fun setDemoMode(enabled: Boolean) {
         _useDemoMode.value = enabled
-        val manager = if (enabled) demoManager else bluetoothManager
+        selectProtocol(if (enabled) TransportProtocol.DEMO_SIMULATION else TransportProtocol.GOOGLE_NEARBY_CONNECTIONS)
+    }
+
+    fun selectProtocol(protocol: TransportProtocol) {
+        if (_selectedProtocol.value == protocol && _activeManager.value.transferState.value == TransferState.Idle) return
+        _activeManager.value.cancelTransfer()
+        _selectedProtocol.value = protocol
+        _useDemoMode.value = (protocol == TransportProtocol.DEMO_SIMULATION)
+
+        val manager: NearbyTransferManager = when (protocol) {
+            TransportProtocol.DEMO_SIMULATION -> demoManager
+            TransportProtocol.GOOGLE_NEARBY_CONNECTIONS -> nearbyManager ?: bluetoothManager
+            TransportProtocol.BLUETOOTH_RFCOMM -> bluetoothManager
+        }
+
         _activeManager.value = manager
         manager.resetToIdle()
         if (!enabled) {
             bluetoothManager.loadBondedDevices()
             bluetoothManager.startServerListening()
         }
+    }
+
+    fun acceptConnection(peer: PeerDevice) {
+        _activeManager.value.acceptConnection(peer)
+    }
+
+    fun rejectConnection(peer: PeerDevice) {
+        _activeManager.value.rejectConnection(peer)
+    }
+
+    fun exchangeManifestWithPeer(peer: PeerDevice) {
+        _activeManager.value.sendManifestToPeer(peer)
     }
 
     fun startScanning() {

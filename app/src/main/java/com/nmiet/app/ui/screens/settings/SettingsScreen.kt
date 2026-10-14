@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
@@ -87,7 +88,9 @@ import com.nmiet.app.ui.theme.WarningAmber
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    onOpenTeacherTools: () -> Unit = {},
+    onOpenLocalAiPlayground: () -> Unit = {}
 ) {
     val profile by viewModel.profile.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
@@ -566,135 +569,32 @@ fun SettingsScreen(
                 Text("Reset & Reload Class 9 Science Pilot Pack")
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Section 6: Cloud AI & NVIDIA NIM API Key Configuration
-            Text(
-                text = "Cloud AI & NVIDIA NIM API Key",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            // Teacher Tools Studio CTA
+            OutlinedButton(
+                onClick = onOpenTeacherTools,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = PrimaryBlue)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "NVIDIA NIM / Cloud API Key",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "Add your API key manually for Nemotron-3-Super reasoning, Llama-3.2 Vision OCR, and FLUX.2 diagram generation.",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("API Key (nvapi-...)") },
-                        placeholder = { Text("nvapi-xxxxxxxxxxxxxxxxxxxxxxxx") },
-                        singleLine = true,
-                        visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
-                                Icon(
-                                    imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = if (isApiKeyVisible) "Hide Key" else "Show Key"
-                                )
-                            }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (configuredApiKey.isNotBlank())
-                                "Status: Active (${configuredApiKey.take(7)}••••${configuredApiKey.takeLast(4)})"
-                            else
-                                "Status: Offline / Fallback Mode",
-                            fontSize = 11.sp,
-                            color = if (configuredApiKey.isNotBlank()) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        if (configuredApiKey.isNotBlank()) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = SuccessGreen,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                apiKeyInput = ""
-                                viewModel.clearNvidiaApiKey()
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("API Key cleared. Reverted to offline fallback.")
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = configuredApiKey.isNotBlank() || apiKeyInput.isNotBlank()
-                        ) {
-                            Icon(imageVector = Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear")
-                        }
-
-                        Button(
-                            onClick = {
-                                viewModel.saveNvidiaApiKey(apiKeyInput)
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("API Key saved successfully for NVIDIA NIM services.")
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = apiKeyInput.isNotBlank() && apiKeyInput != configuredApiKey
-                        ) {
-                            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Save Key")
-                        }
-                    }
-                }
+                Icon(imageVector = Icons.Default.School, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open Teacher Content Studio (Lecture Pipeline)")
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Local AI Playground (LiteRT-LM On-Device SLM) CTA
+            OutlinedButton(
+                onClick = onOpenLocalAiPlayground,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = PrimaryBlue
+                )
+            ) {
+                Icon(imageVector = Icons.Default.SmartToy, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open Local AI Playground (LiteRT-LM SLM)")
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Blueprint Footer
             Card(

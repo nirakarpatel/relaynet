@@ -211,6 +211,11 @@ class VoiceAssistantManager(
 
     fun startListening() {
         stopSpeaking()
+        if (!com.nmiet.app.permissions.NearbyPermissionManager.hasAudioPermission(context)) {
+            _uiState.value = VoiceUiState.Error("Microphone permission (RECORD_AUDIO) is required to use Voice Assistant.")
+            return
+        }
+
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
             _uiState.value = VoiceUiState.Error("Speech Recognition is not available on this device.")
             return

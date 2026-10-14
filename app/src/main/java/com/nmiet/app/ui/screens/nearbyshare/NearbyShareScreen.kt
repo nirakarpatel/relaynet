@@ -57,7 +57,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -112,6 +111,7 @@ fun NearbyShareScreen(
     val selectedModelType by viewModel.selectedModelType.collectAsState()
     val transferState by viewModel.transferState.collectAsState()
     val isDemoMode by viewModel.useDemoMode.collectAsState()
+    val selectedProtocol by viewModel.selectedProtocol.collectAsState()
     val packs by viewModel.learningPacks.collectAsState()
     val notes by viewModel.notes.collectAsState()
     val selectedPackIds by viewModel.selectedPackIds.collectAsState()
@@ -231,7 +231,7 @@ fun NearbyShareScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Hardware & Mode Selection
+                // Transport Protocol Selector Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -239,112 +239,65 @@ fun NearbyShareScreen(
                         containerColor = if (isDemoMode) MaterialTheme.colorScheme.surfaceVariant else PrimaryBlue.copy(alpha = 0.08f)
                     )
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        SingleChoiceSegmentedButtonRow(
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            SegmentedButton(
-                                selected = !isDemoMode,
-                                onClick = { viewModel.setDemoMode(false) },
-                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                            ) {
-                                Text("📡 Real Bluetooth", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                            SegmentedButton(
-                                selected = isDemoMode,
-                                onClick = { viewModel.setDemoMode(true) },
-                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                            ) {
-                                Text("🧪 Simulation Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        if (isDemoMode) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Transport Protocol",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            if (selectedProtocol == TransportProtocol.DEMO_SIMULATION) {
                                 DemoModeBadge()
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Simulating offline P2P mesh transfer for single-device and emulator demonstrations.",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Bluetooth,
-                                    contentDescription = null,
-                                    tint = PrimaryBlue,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Device: ${viewModel.getLocalBluetoothName()} • Server: Listening",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (!hasPermissions) {
-                                    Button(
-                                        onClick = {
-                                            permissionLauncher.launch(NearbyPermissionManager.getRequiredPermissions())
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("Grant Bluetooth Permissions", fontSize = 11.sp)
-                                    }
-                                } else {
-                                    OutlinedButton(
-                                        onClick = {
-                                            val discoverableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
-                                                putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120)
-                                            }
-                                            discoverableLauncher.launch(discoverableIntent)
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(13.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Discoverable", fontSize = 11.sp)
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            viewModel.refreshDevices()
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(13.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Refresh Paired", fontSize = 11.sp)
-                                    }
-                                    OutlinedButton(
-                                        onClick = {
-                                            try {
-                                                val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                                                context.startActivity(intent)
-                                            } catch (_: Exception) {}
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(13.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Pair Device", fontSize = 11.sp)
-                                    }
-                                }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.GOOGLE_NEARBY_CONNECTIONS,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.GOOGLE_NEARBY_CONNECTIONS) },
+                                label = { Text("Nearby (P2P)", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.BLUETOOTH_RFCOMM,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.BLUETOOTH_RFCOMM) },
+                                label = { Text("Bluetooth", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = selectedProtocol == TransportProtocol.DEMO_SIMULATION,
+                                onClick = { viewModel.selectProtocol(TransportProtocol.DEMO_SIMULATION) },
+                                label = { Text("Demo Mock", fontSize = 11.sp, fontWeight = FontWeight.Medium) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = when (selectedProtocol) {
+                                TransportProtocol.GOOGLE_NEARBY_CONNECTIONS ->
+                                    "Google Nearby Connections: High-speed Star topology offline P2P."
+                                TransportProtocol.BLUETOOTH_RFCOMM ->
+                                    "Bluetooth RFCOMM: Native direct socket connection without Play Services."
+                                TransportProtocol.DEMO_SIMULATION ->
+                                    "Demo Simulation: Offline test run with simulated progress & SHA-256 validation."
+                            },
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -400,6 +353,101 @@ fun NearbyShareScreen(
                             onRetry = { viewModel.startScanning() },
                             onDismiss = { viewModel.resetTransfer() }
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    is TransferState.AuthVerification -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "🔐 Nearby Connection Request",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Peer: ${state.peer.name}\nVerify matching 4-digit authentication code on both devices:",
+                                    fontSize = 12.sp
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(PrimaryBlue)
+                                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                                        .align(Alignment.CenterHorizontally)
+                                ) {
+                                    Text(
+                                        text = state.authenticationDigits,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 24.sp,
+                                        letterSpacing = 4.sp,
+                                        color = Color.White
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { viewModel.rejectConnection(state.peer) },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Reject")
+                                    }
+                                    Button(
+                                        onClick = { viewModel.acceptConnection(state.peer) },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                                    ) {
+                                        Text("Accept & Connect")
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    is TransferState.ManifestReceived -> {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreen)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Content Manifest Received from ${state.peer.name}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Discovered ${state.manifest.items.size} total items (${state.missingOrUpdatableItems.size} new/updatable for your grade).",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                state.missingOrUpdatableItems.forEach { item ->
+                                    Text("• ${item.title} (${(item.sizeBytes / 1_000_000.0).let { "%.1f".format(it) }} MB, v${item.version})", fontSize = 12.sp)
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { viewModel.sendToPeer(state.peer) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                                ) {
+                                    Text("Send Selected Learning Pack")
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                     else -> {}
