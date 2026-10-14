@@ -64,7 +64,8 @@ import com.nmiet.app.ui.theme.WarningAmber
 
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    onOpenTeacherTools: () -> Unit = {}
 ) {
     val profile by viewModel.profile.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
@@ -421,6 +422,16 @@ fun SettingsScreen(
                 Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Reset & Reload Class 9 Science Pilot Pack")
+            }
+
+            // Teacher Tools Studio CTA
+            OutlinedButton(
+                onClick = onOpenTeacherTools,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(imageVector = Icons.Default.School, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open Teacher Content Studio (Lecture Pipeline)")
             }
 
             Spacer(modifier = Modifier.height(14.dp))

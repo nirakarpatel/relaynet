@@ -82,7 +82,10 @@ fun AppNavHost(
     val isFullScreen = currentRoute?.startsWith("lesson") == true ||
             currentRoute?.startsWith("quiz") == true ||
             currentRoute?.startsWith("notes") == true ||
-            currentRoute?.startsWith("custom_quiz") == true
+            currentRoute?.startsWith("custom_quiz") == true ||
+            currentRoute?.startsWith("downloads") == true ||
+            currentRoute?.startsWith("study_planner") == true ||
+            currentRoute?.startsWith("teacher_tools") == true
 
     Scaffold(
         bottomBar = {
@@ -162,6 +165,12 @@ fun AppNavHost(
                         },
                         onGenerateNotes = { packId ->
                             navController.navigate(Routes.notesView(packId))
+                        },
+                        onOpenDownloads = {
+                            navController.navigate(Routes.DOWNLOADS)
+                        },
+                        onOpenStudyPlanner = {
+                            navController.navigate(Routes.STUDY_PLANNER)
                         }
                     )
                 }
@@ -199,7 +208,12 @@ fun AppNavHost(
                 }
 
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(viewModel = settingsViewModel)
+                    SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onOpenTeacherTools = {
+                            navController.navigate(Routes.TEACHER_TOOLS)
+                        }
+                    )
                 }
 
                 composable(
@@ -305,6 +319,30 @@ fun AppNavHost(
                                 restoreState = true
                             }
                         }
+                    )
+                }
+
+                composable(Routes.DOWNLOADS) {
+                    com.nmiet.app.ui.screens.downloads.DownloadsScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Routes.STUDY_PLANNER) {
+                    com.nmiet.app.ui.screens.studyplanner.StudyPlannerScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() },
+                        onStartPractice = { topicId ->
+                            navController.navigate(Routes.customQuiz(topicId))
+                        }
+                    )
+                }
+
+                composable(Routes.TEACHER_TOOLS) {
+                    com.nmiet.app.ui.screens.teacher.TeacherToolsScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() }
                     )
                 }
             }

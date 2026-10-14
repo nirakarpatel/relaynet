@@ -9,7 +9,11 @@ enum class Board(val displayName: String, val code: String) {
 enum class AppLanguage(val displayName: String, val code: String) {
     ODIA("ଓଡ଼ିଆ (Odia)", "or"),
     ENGLISH("English", "en"),
-    BILINGUAL("Bilingual (ଓଡ଼ିଆ + English)", "bi")
+    BILINGUAL("Bilingual (ଓଡ଼ିଆ + English)", "bi"),
+    HINDI("हिन्दी (Hindi)", "hi"),
+    BENGALI("বাংলা (Bengali)", "bn"),
+    TAMIL("தமிழ் (Tamil)", "ta"),
+    TELUGU("తెలుగు (Telugu)", "te")
 }
 
 data class LearnerProfile(

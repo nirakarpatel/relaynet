@@ -49,4 +49,18 @@ interface ContentRepository {
     suspend fun toggleNoteBookmark(noteId: String, isBookmarked: Boolean)
     suspend fun deleteGeneratedNote(noteId: String)
     suspend fun getPackByIdOnce(packId: String): LearningPack?
+
+    // LearnLite Content Catalogue & Downloads
+    fun getContentItemsFlow(): Flow<List<com.nmiet.app.domain.model.ContentItem>>
+    suspend fun updateContentItem(item: com.nmiet.app.domain.model.ContentItem)
+    suspend fun importPackFromZip(zipFile: java.io.File, outputDir: java.io.File): Result<LearningPack>
+
+    // Personalized Study Planner & Revision
+    fun getStudyPlanFlow(): Flow<com.nmiet.app.domain.model.StudyPlan>
+    suspend fun toggleStudyTaskCompleted(taskId: String, isCompleted: Boolean)
+    suspend fun addStudyTask(task: com.nmiet.app.domain.model.StudyTask)
+
+    // Optional SLM Catalogue
+    fun getAIModelsFlow(): Flow<List<com.nmiet.app.domain.model.AIModelInfo>>
+    suspend fun setActiveAIModel(modelId: String?)
 }
