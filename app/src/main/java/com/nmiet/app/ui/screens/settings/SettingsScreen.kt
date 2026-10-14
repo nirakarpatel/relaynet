@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -257,7 +259,11 @@ fun SettingsScreen(
                         ) {
                             Icon(imageVector = Icons.Default.CloudSync, contentDescription = null, tint = PrimaryBlue)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
                                 Text(
                                     text = "$pendingSyncAttemptsCount Quiz attempts pending sync",
                                     fontWeight = FontWeight.Bold,
@@ -276,7 +282,10 @@ fun SettingsScreen(
 
                         OutlinedButton(
                             onClick = { viewModel.syncPendingAttempts() },
-                            modifier = Modifier.padding(start = 8.dp),
+                            modifier = Modifier
+                                .wrapContentWidth()
+                                .defaultMinSize(minHeight = 44.dp)
+                                .padding(start = 8.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             enabled = syncStatus.isOnline && pendingSyncAttemptsCount > 0
                         ) {
@@ -286,7 +295,12 @@ fun SettingsScreen(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Sync Now", maxLines = 1)
+                            Text(
+                                text = "Sync Now",
+                                maxLines = 1,
+                                softWrap = false,
+                                style = MaterialTheme.typography.labelLarge
+                            )
                         }
                     }
                 }
