@@ -128,6 +128,15 @@ class AITutorViewModel(
         }
     }
 
+    fun onVoiceResultReceived(recognizedText: String) {
+        if (recognizedText.isNotBlank()) {
+            _inputText.value = recognizedText
+        }
+    }
+
+    /**
+     * Demo fallback: Used only when device lacks speech recognition hardware or in simulated testing.
+     */
     fun simulateVoiceInput() {
         _isRecordingVoice.value = true
         viewModelScope.launch {

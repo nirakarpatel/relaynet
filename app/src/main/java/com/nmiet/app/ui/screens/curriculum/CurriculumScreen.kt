@@ -67,7 +67,9 @@ fun CurriculumScreen(
     onOpenLesson: (String) -> Unit,
     onStartQuiz: (String) -> Unit,
     onShareViaBluetooth: () -> Unit,
-    onGenerateNotes: (String) -> Unit = {}
+    onGenerateNotes: (String) -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
+    onOpenStudyPlanner: () -> Unit = {}
 ) {
     val currentLanguage by viewModel.currentLanguage.collectAsState()
     val profile by viewModel.profile.collectAsState()
@@ -321,6 +323,34 @@ fun CurriculumScreen(
                                 color = if (isSharedSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Quick Action Bar for Downloads & Study Planner
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onOpenDownloads,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Downloads", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onOpenStudyPlanner,
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 10.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.School, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Study Plan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
