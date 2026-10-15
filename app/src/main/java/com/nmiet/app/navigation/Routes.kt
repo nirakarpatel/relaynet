@@ -30,7 +30,7 @@ sealed class Screen(
     data object ConnectivityPermissions : Screen("profile/connectivity_permissions", "Connectivity & Permissions", Icons.Default.Bluetooth)
     data object OfflineContent : Screen("profile/offline_content", "Offline Content", Icons.Default.Storage)
     data object PrivacySecurity : Screen("profile/privacy_security", "Privacy & Security", Icons.Default.Security)
-    data object AboutRelaynet : Screen("profile/about", "About Relaynet", Icons.Default.Info)
+    data object AboutRelaynet : Screen("profile/about", "About RelayNet", Icons.Default.Info)
     data object Login : Screen("login", "Sign In", Icons.Default.Person)
     data object ProfileCompletion : Screen("profile_completion", "Complete Profile", Icons.Default.Person)
 

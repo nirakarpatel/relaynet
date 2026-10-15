@@ -1,8 +1,12 @@
 package com.nmiet.app.ui.screens.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.nmiet.app.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,13 +139,25 @@ fun ProfileCompletionScreen(
                     shape = RoundedCornerShape(16.dp),
                     color = PrimaryBlue.copy(alpha = 0.12f)
                 ) {
-                    Text(
-                        text = "RelayNet Profile Setup",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryBlue,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                    )
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_relaynet_logo),
+                            contentDescription = "RelayNet",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "RelayNet Profile Setup",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryBlue
+                        )
+                    }
                 }
             }
 

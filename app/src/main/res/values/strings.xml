@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NMIET Share</string>
+    <string name="app_name">RelayNet</string>
     <string name="nav_feed">Feed</string>
     <string name="nav_nearby">Nearby</string>
     <string name="nav_library">Library</string>

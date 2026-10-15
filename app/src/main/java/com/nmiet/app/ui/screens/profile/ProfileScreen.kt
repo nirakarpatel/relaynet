@@ -532,11 +532,11 @@ fun ProfileScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                    // Item 5: About Relaynet
+                    // Item 5: About RelayNet
                     ProfileMenuItem(
                         icon = Icons.Default.Info,
                         iconTint = PrimaryBlue,
-                        title = "About Relaynet",
+                        title = "About RelayNet",
                         subtitle = "Version 1.0 • NEXTECH 2.0 / NIRMIT 2026 • Team Thinkory.",
                         onClick = { navController.navigate(Screen.AboutRelaynet.route) }
                     )

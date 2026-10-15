@@ -2,7 +2,12 @@ package com.nmiet.app.ui.screens.profile
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.nmiet.app.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -479,13 +484,13 @@ fun PrivacySecurityScreen(navController: NavController) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "Relaynet Offline Privacy Model",
+                text = "RelayNet Offline Privacy Model",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Relaynet is engineered from the ground up for rural classrooms with zero third-party telemetry, ad networks, or personal data tracking.",
+                text = "RelayNet is engineered from the ground up for rural classrooms with zero third-party telemetry, ad networks, or personal data tracking.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -525,7 +530,7 @@ fun PrivacySecurityScreen(navController: NavController) {
 }
 
 /**
- * Screen 4: About Relaynet Screen
+ * Screen 4: About RelayNet Screen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -533,7 +538,7 @@ fun AboutRelaynetScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("About Relaynet", fontWeight = FontWeight.Bold) },
+                title = { Text("About RelayNet", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -563,25 +568,27 @@ fun AboutRelaynetScreen(navController: NavController) {
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Surface(
-                        modifier = Modifier.size(60.dp),
-                        shape = CircleShape,
-                        color = PrimaryBlue
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        modifier = Modifier
+                            .size(84.dp)
+                            .border(1.5.dp, PrimaryBlue.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.CellTower,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_relaynet_logo),
+                            contentDescription = "RelayNet Official Logo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(20.dp))
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     Text(
-                        text = "RELAYNET",
+                        text = "RelayNet",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = PrimaryBlue
@@ -618,7 +625,7 @@ fun AboutRelaynetScreen(navController: NavController) {
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Relaynet democratizes digital learning across rural Odisha and secondary schools with unreliable connectivity by providing an autonomous, offline-first educational platform with local AI tutoring, Bluetooth peer mesh synchronization, and bilingual regional language support.",
+                text = "RelayNet democratizes digital learning across rural Odisha and secondary schools with unreliable connectivity by providing an autonomous, offline-first educational platform with local AI tutoring, Bluetooth peer mesh synchronization, and bilingual regional language support.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 18.sp

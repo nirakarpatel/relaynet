@@ -48,6 +48,9 @@ import com.nmiet.app.domain.repository.ContentRepository
 import com.nmiet.app.speech.VoiceAssistantManager
 import com.nmiet.app.ui.components.VoiceAssistantModal
 import com.nmiet.app.ui.components.VoiceAssistantOverlay
+import com.nmiet.app.ui.screens.auth.AuthViewModel
+import com.nmiet.app.ui.screens.auth.LoginScreen
+import com.nmiet.app.ui.screens.auth.ProfileCompletionScreen
 import com.nmiet.app.ui.screens.curriculum.CurriculumScreen
 import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
 import com.nmiet.app.ui.screens.customquiz.CustomQuizRunnerScreen
@@ -323,6 +326,41 @@ fun AppNavHost(
 
                 composable(Screen.AboutRelaynet.route) {
                     AboutRelaynetScreen(navController = navController)
+                }
+
+                composable(Routes.LOGIN) {
+                    val authViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        AuthViewModel(repository)
+                    }
+                    LoginScreen(
+                        viewModel = authViewModel,
+                        onNavigateToHome = {
+                            navController.navigate(Routes.CURRICULUM) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onNavigateToProfileCompletion = {
+                            navController.navigate(Routes.PROFILE_COMPLETION)
+                        },
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Routes.PROFILE_COMPLETION) {
+                    val authViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        AuthViewModel(repository)
+                    }
+                    ProfileCompletionScreen(
+                        viewModel = authViewModel,
+                        onProfileCompleted = {
+                            navController.navigate(Routes.CURRICULUM) {
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            }
+                        },
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
 
                 // Backward-compatibility: redirect legacy settings route to AppSettingsScreen

@@ -4,10 +4,14 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.nmiet.app.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -165,23 +169,34 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // 1. RelayNet App Mark / Brand Badge
-            Box(
+            Card(
+                shape = RoundedCornerShape(22.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier
-                    .size(68.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(PrimaryBlue.copy(alpha = 0.10f))
-                    .border(1.dp, PrimaryBlue.copy(alpha = 0.25f), RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center
+                    .size(96.dp)
+                    .border(1.5.dp, PrimaryBlue.copy(alpha = 0.15f), RoundedCornerShape(22.dp))
             ) {
-                Icon(
-                    imageVector = Icons.Default.School,
-                    contentDescription = "RelayNet Logo",
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(38.dp)
+                Image(
+                    painter = painterResource(id = R.drawable.ic_relaynet_logo),
+                    contentDescription = "RelayNet Official Logo",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(22.dp))
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "RelayNet",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = PrimaryBlue,
+                letterSpacing = 0.5.sp
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             // 2. Heading
             Text(
