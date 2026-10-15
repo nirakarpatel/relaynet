@@ -17,14 +17,17 @@ import com.nmiet.app.data.remote.GeminiMultimodalService
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.StudyLevel
 import com.nmiet.app.domain.repository.ContentRepository
+import com.nmiet.app.navigation.Routes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 sealed interface VoiceUiState {
@@ -109,7 +112,7 @@ class VoiceAssistantManager(
     private val repository: ContentRepository,
     private val languageManager: LanguageManager,
     private val geminiKeyRotator: GeminiKeyRotator = GeminiKeyRotator.getInstance(),
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job()),
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
     private val geminiMultimodalService: GeminiMultimodalService = GeminiMultimodalService(geminiKeyRotator),
     private val geminiImageService: GeminiImageService = GeminiImageService(geminiKeyRotator)
 ) : RecognitionListener, TextToSpeech.OnInitListener {
@@ -233,6 +236,10 @@ class VoiceAssistantManager(
         try {
             if (speechRecognizer == null) {
                 speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                if (speechRecognizer == null) {
+                    _uiState.value = VoiceUiState.Error("Speech recognition service could not be initialized.")
+                    return
+                }
                 speechRecognizer?.setRecognitionListener(this)
             }
 
@@ -254,8 +261,9 @@ class VoiceAssistantManager(
                 soundLevelRms = 0f,
                 languageLabel = config.displayLabel
             )
-        } catch (e: Exception) {
-            _uiState.value = VoiceUiState.Error("Failed to start voice recognizer: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e("VoiceAssistantManager", "Failed to start speech recognition", t)
+            _uiState.value = VoiceUiState.Error("Voice recognition failed to start: ${t.localizedMessage ?: "Unknown"}")
         }
     }
 
@@ -350,7 +358,7 @@ class VoiceAssistantManager(
                 lower.startsWith("ପାଠ ଖୋଲ") || lower.startsWith("ଅଧ୍ୟାୟ ଖୋଲ") ||
                 lower.startsWith("पाठ खोलो")) && (lower.contains("photosynthesis") || lower.contains("chapter 4") || lower.contains("ଆଲୋକ ଶ୍ଳେଷଣ"))
         if (isExplicitLessonOpen) {
-            val route = "lesson/relaynet_class9_science_photosynthesis_v1"
+            val route = Routes.lessonReader("relaynet_class9_science_photosynthesis_v1")
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
                 actionTitle = "Opening Lesson: Chapter 4 Photosynthesis",
@@ -369,7 +377,7 @@ class VoiceAssistantManager(
                 lower.startsWith("କୁଇଜ୍ ଆରମ୍ଭ") || lower.startsWith("क्विज शुरू") ||
                 lower == "quiz" || lower == "start quiz" || lower == "test"
         if (isQuizIntent) {
-            val route = "quiz/relaynet_class9_science_photosynthesis_v1"
+            val route = Routes.quizRunner("relaynet_class9_science_photosynthesis_v1")
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
                 actionTitle = "Launching Diagnostic Quiz",
@@ -387,7 +395,7 @@ class VoiceAssistantManager(
         val isNotesIntent = lower.startsWith("generate notes") || lower.startsWith("make notes") ||
                 lower.startsWith("open notes") || lower.startsWith("ନୋଟ୍ ତିଆରି") || lower == "notes"
         if (isNotesIntent) {
-            val route = "notes"
+            val route = Routes.notesView("relaynet_class9_science_photosynthesis_v1")
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
                 actionTitle = "Generating Structured Revision Notes",
@@ -412,79 +420,92 @@ class VoiceAssistantManager(
         )
 
         scope.launch {
-            val activeLanguage = languageManager.currentLanguage.value
-            val config = getSpeechLanguageConfig()
-
-            var currentGrade = "Class 9"
-            var currentBoard = "CBSE / Odisha Board"
-            val studyLevel = StudyLevel.INTERMEDIATE
             try {
-                val profile = repository.getLearnerProfileFlow().first()
-                currentGrade = "Class ${profile.classGrade}"
-                currentBoard = profile.board.displayName
-            } catch (_: Exception) {}
+                val activeLanguage = languageManager.currentLanguage.value
+                val config = getSpeechLanguageConfig()
 
-            // Check for image/diagram request intent first
-            if (isDiagramRequest(spokenQuery)) {
-                val diagramResult = geminiImageService.generateEducationalDiagram(spokenQuery)
+                var currentGrade = "Class 9"
+                var currentBoard = "CBSE / Odisha Board"
+                val studyLevel = StudyLevel.INTERMEDIATE
+                try {
+                    val profile = repository.getLearnerProfileFlow().first()
+                    currentGrade = "Class ${profile.classGrade}"
+                    currentBoard = profile.board.displayName
+                } catch (_: Throwable) {}
 
-                val imageBase64 = diagramResult.getOrNull()
-                val caption = if (diagramResult.isSuccess && !imageBase64.isNullOrBlank()) {
-                    when (activeLanguage) {
-                        AppLanguage.ODIA_ONLY -> "ଏଠାରେ '$spokenQuery' ପାଇଁ ପାଠ୍ୟପୁସ୍ତକ ଚିତ୍ର ପ୍ରସ୍ତୁତ କରାଯାଇଛି:"
-                        AppLanguage.HINDI_ONLY -> "यहाँ '$spokenQuery' के लिए पाठ्यपुस्तक का चित्र प्रस्तुत है:"
-                        else -> "Here is the scientific textbook diagram for '$spokenQuery':"
+                // Check for image/diagram request intent first
+                if (isDiagramRequest(spokenQuery)) {
+                    val diagramResult = geminiImageService.generateEducationalDiagram(spokenQuery)
+
+                    val imageBase64 = diagramResult.getOrNull()
+                    val caption = if (diagramResult.isSuccess && !imageBase64.isNullOrBlank()) {
+                        when (activeLanguage) {
+                            AppLanguage.ODIA_ONLY -> "ଏଠାରେ '$spokenQuery' ପାଇଁ ପାଠ୍ୟପୁସ୍ତକ ଚିତ୍ର ପ୍ରସ୍ତୁତ କରାଯାଇଛି:"
+                            AppLanguage.HINDI_ONLY -> "यहाँ '$spokenQuery' के लिए पाठ्यपुस्तक का चित्र प्रस्तुत है:"
+                            else -> "Here is the scientific textbook diagram for '$spokenQuery':"
+                        }
+                    } else {
+                        when (activeLanguage) {
+                            AppLanguage.ODIA_ONLY -> "ଚିତ୍ର ପ୍ରସ୍ତୁତ କରିବାରେ ଅସୁବିଧା ହେଲା। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।"
+                            AppLanguage.HINDI_ONLY -> "चित्र निर्माण में समस्या आई। कृपया पुनः प्रयास करें।"
+                            else -> "Could not generate diagram at this moment. Please try again."
+                        }
                     }
+
+                    _uiState.value = VoiceUiState.Speaking(
+                        query = spokenQuery,
+                        answerText = caption,
+                        textEnglish = caption,
+                        textOdia = caption,
+                        isPaused = false,
+                        generatedDiagramBase64 = imageBase64
+                    )
+                    speakUtterance(text = caption, config = config)
                 } else {
-                    when (activeLanguage) {
-                        AppLanguage.ODIA_ONLY -> "ଚିତ୍ର ପ୍ରସ୍ତୁତ କରିବାରେ ଅସୁବିଧା ହେଲା। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।"
-                        AppLanguage.HINDI_ONLY -> "चित्र निर्माण में समस्या आई। कृपया पुनः प्रयास करें।"
-                        else -> "Could not generate diagram at this moment. Please try again."
+                    // Dynamic Academic Solver via Gemini API with rotating keys
+                    val answerResult = geminiMultimodalService.solveTextQuery(
+                        query = spokenQuery,
+                        language = activeLanguage,
+                        grade = currentGrade,
+                        board = currentBoard,
+                        studyLevel = studyLevel
+                    )
+
+                    answerResult.onSuccess { answerText ->
+                        _uiState.value = VoiceUiState.Speaking(
+                            query = spokenQuery,
+                            answerText = answerText,
+                            textEnglish = answerText,
+                            textOdia = answerText,
+                            isPaused = false
+                        )
+                        speakUtterance(text = answerText, config = config)
+                    }.onFailure { error ->
+                        Log.w("VoiceAssistantManager", "Gemini solveTextQuery failed (${error.message}). Falling back to Room SQLite search on IO.")
+                        // Graceful offline fallback: Run in IO dispatcher so Room main thread check never triggers!
+                        val localFallback = withContext(Dispatchers.IO) {
+                            try {
+                                AppDatabase.getInstance(context).learningDao()
+                                    .searchLessonContent(spokenQuery)
+                            } catch (t: Throwable) {
+                                Log.e("VoiceAssistantManager", "Room SQLite searchLessonContent failed", t)
+                                null
+                            }
+                        } ?: "I could not find an answer offline. Please reconnect to cloud AI or try another curriculum question."
+
+                        _uiState.value = VoiceUiState.Speaking(
+                            query = spokenQuery,
+                            answerText = localFallback,
+                            textEnglish = localFallback,
+                            textOdia = localFallback,
+                            isPaused = false
+                        )
+                        speakUtterance(text = localFallback, config = config)
                     }
                 }
-
-                _uiState.value = VoiceUiState.Speaking(
-                    query = spokenQuery,
-                    answerText = caption,
-                    textEnglish = caption,
-                    textOdia = caption,
-                    isPaused = false,
-                    generatedDiagramBase64 = imageBase64
-                )
-                speakUtterance(text = caption, config = config)
-            } else {
-                // Dynamic Academic Solver via Gemini API with rotating keys
-                val answerResult = geminiMultimodalService.solveTextQuery(
-                    query = spokenQuery,
-                    language = activeLanguage,
-                    grade = currentGrade,
-                    board = currentBoard,
-                    studyLevel = studyLevel
-                )
-
-                answerResult.onSuccess { answerText ->
-                    _uiState.value = VoiceUiState.Speaking(
-                        query = spokenQuery,
-                        answerText = answerText,
-                        textEnglish = answerText,
-                        textOdia = answerText,
-                        isPaused = false
-                    )
-                    speakUtterance(text = answerText, config = config)
-                }.onFailure { error ->
-                    Log.w("VoiceAssistantManager", "Gemini solveTextQuery failed (${error.message}). Falling back to Room SQLite search.")
-                    // Graceful offline fallback: ONLY use topic-matching keyword search in Room SQLite, NEVER a hardcoded string!
-                    val localFallback = AppDatabase.getInstance(context).learningDao()
-                        .searchLessonContent(spokenQuery) ?: "I could not find an answer offline. Please reconnect to cloud AI."
-                    _uiState.value = VoiceUiState.Speaking(
-                        query = spokenQuery,
-                        answerText = localFallback,
-                        textEnglish = localFallback,
-                        textOdia = localFallback,
-                        isPaused = false
-                    )
-                    speakUtterance(text = localFallback, config = config)
-                }
+            } catch (t: Throwable) {
+                Log.e("VoiceAssistantManager", "Unhandled error in onSpeechRecognized", t)
+                _uiState.value = VoiceUiState.Error("An error occurred: ${t.localizedMessage ?: "Unknown"}")
             }
         }
     }
@@ -543,7 +564,7 @@ class VoiceAssistantManager(
         try {
             tts?.stop()
             speechRecognizer?.stopListening()
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
         val current = _uiState.value
         if (current is VoiceUiState.Speaking || current is VoiceUiState.Thinking || current is VoiceUiState.Paused) {
             _uiState.value = VoiceUiState.Idle
@@ -559,10 +580,12 @@ class VoiceAssistantManager(
     fun destroy() {
         try {
             speechRecognizer?.destroy()
-            speechRecognizer = null
+        } catch (_: Throwable) {}
+        speechRecognizer = null
+        try {
             tts?.stop()
             tts?.shutdown()
-            tts = null
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
+        tts = null
     }
 }

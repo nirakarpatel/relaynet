@@ -101,7 +101,11 @@ fun VoiceAssistantModal(
         val state = voiceState
         if (state is VoiceUiState.ActionExecuted && !state.targetRoute.isNullOrBlank()) {
             kotlinx.coroutines.delay(1000)
-            onNavigate(state.targetRoute)
+            try {
+                onNavigate(state.targetRoute)
+            } catch (t: Throwable) {
+                android.util.Log.e("VoiceAssistantModal", "Navigation failed", t)
+            }
             onDismiss()
         }
     }

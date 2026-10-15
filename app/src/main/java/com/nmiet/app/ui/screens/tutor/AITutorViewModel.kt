@@ -473,7 +473,7 @@ class AITutorViewModel(
 
         try {
             stopVoiceRecognition()
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)?.apply {
                 setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
                         _isRecordingVoice.value = true
@@ -506,6 +506,11 @@ class AITutorViewModel(
                 })
             }
 
+            if (speechRecognizer == null) {
+                simulateVoiceInput()
+                return
+            }
+
             val langTag = when (currentLanguage.value) {
                 AppLanguage.ODIA_ONLY, AppLanguage.BILINGUAL_EN_OR -> "or-IN"
                 AppLanguage.HINDI_ONLY, AppLanguage.BILINGUAL_EN_HI -> "hi-IN"
@@ -520,8 +525,8 @@ class AITutorViewModel(
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             }
             speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
-            Log.e("AITutorViewModel", "Speech recognition failed: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e("AITutorViewModel", "Speech recognition failed: ${t.message}", t)
             _isRecordingVoice.value = false
             simulateVoiceInput()
         }
@@ -531,7 +536,7 @@ class AITutorViewModel(
         try {
             speechRecognizer?.stopListening()
             speechRecognizer?.destroy()
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
         speechRecognizer = null
         _isRecordingVoice.value = false
     }

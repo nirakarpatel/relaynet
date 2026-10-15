@@ -477,6 +477,21 @@ fun AppNavHost(
                     )
                 }
 
+                // Voice / Deep-link alias for "notes" without query arguments
+                composable("notes") {
+                    val notesViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                        NotesGeneratorViewModel(repository)
+                    }
+                    NotesViewScreen(
+                        viewModel = notesViewModel,
+                        topicId = "relaynet_class9_science_photosynthesis_v1",
+                        onBackClick = { navController.popBackStack() },
+                        onShareViaNearby = {
+                            navController.navigate(Routes.MESH_SHARE)
+                        }
+                    )
+                }
+
                 // MODULE 2: Automated Custom Quiz Generator & Runner
                 composable(
                     route = Routes.CUSTOM_QUIZ,
@@ -536,7 +551,7 @@ fun AppNavHost(
                     com.nmiet.app.ui.screens.teacher.VideoTranscriptionScreen(
                         repository = repository,
                         onBackClick = { navController.popBackStack() },
-                        onOpenNotes = { topicId -> navController.navigate("notes_view/$topicId") },
+                        onOpenNotes = { topicId -> navController.navigate(Routes.notesView(topicId)) },
                         onOpenMastery = { navController.navigate(Screen.Mastery.route) }
                     )
                 }
@@ -565,8 +580,12 @@ fun AppNavHost(
                     voiceManager.dismiss()
                 },
                 onNavigate = { route ->
-                    navController.navigate(route) {
-                        launchSingleTop = true
+                    try {
+                        navController.navigate(route) {
+                            launchSingleTop = true
+                        }
+                    } catch (t: Throwable) {
+                        android.util.Log.e("AppNavHost", "Voice navigation failed for route: $route", t)
                     }
                 }
             )

@@ -46,7 +46,7 @@ class SpeechTranscriptionManager(private val context: Context) {
         _transcribedText.value = ""
 
         try {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)?.apply {
                 setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
                         _isListening.value = true
@@ -119,9 +119,9 @@ class SpeechTranscriptionManager(private val context: Context) {
             }
 
             speechRecognizer?.startListening(intent)
-        } catch (e: Exception) {
+        } catch (t: Throwable) {
             _isListening.value = false
-            _errorMessage.value = e.localizedMessage ?: "Failed to start speech recognition"
+            _errorMessage.value = t.localizedMessage ?: "Failed to start speech recognition"
         }
     }
 
@@ -129,7 +129,7 @@ class SpeechTranscriptionManager(private val context: Context) {
         try {
             speechRecognizer?.stopListening()
             speechRecognizer?.destroy()
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
         speechRecognizer = null
         _isListening.value = false
         _rmsDb.value = 0f
