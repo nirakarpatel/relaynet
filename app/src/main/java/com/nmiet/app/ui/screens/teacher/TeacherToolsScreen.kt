@@ -58,7 +58,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun TeacherToolsScreen(
     repository: ContentRepository,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onOpenVideoTranscription: () -> Unit = {}
 ) {
     var lectureTitle by remember { mutableStateOf("Photosynthesis & Light Reactions (Class 9 BSE)") }
     var rawTextTranscript by remember {
@@ -121,7 +122,18 @@ fun TeacherToolsScreen(
                 label = { Text("Lecture Title") }
             )
 
-            Text("Lecture Recording Transcript / Lesson Source", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Lecture Recording Transcript / Lesson Source", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                androidx.compose.material3.TextButton(onClick = onOpenVideoTranscription) {
+                    Icon(imageVector = androidx.compose.material.icons.Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Import & Transcribe Video", fontSize = 11.sp)
+                }
+            }
             OutlinedTextField(
                 value = rawTextTranscript,
                 onValueChange = { rawTextTranscript = it },

@@ -5,10 +5,16 @@
     <!-- Network permissions for online feed synchronization -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Audio recording for speech recognition -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Queries for Speech Recognition Services (Android 11+ / API 30+) -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <!-- Bluetooth permissions for Android 12+ (API 31+) -->
     <uses-permission

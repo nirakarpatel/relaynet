@@ -66,6 +66,7 @@ object Routes {
     const val DOWNLOADS = "downloads"
     const val STUDY_PLANNER = "study_planner"
     const val TEACHER_TOOLS = "teacher_tools"
+    const val VIDEO_TRANSCRIPTION = "video_transcription"
     const val LOCAL_AI_PLAYGROUND = "local_ai_playground"
 
     fun lessonReader(packId: String, section: String? = null): String =

@@ -462,7 +462,17 @@ fun AppNavHost(
                 composable(Routes.TEACHER_TOOLS) {
                     com.nmiet.app.ui.screens.teacher.TeacherToolsScreen(
                         repository = repository,
-                        onBackClick = { navController.popBackStack() }
+                        onBackClick = { navController.popBackStack() },
+                        onOpenVideoTranscription = { navController.navigate(Routes.VIDEO_TRANSCRIPTION) }
+                    )
+                }
+
+                composable(Routes.VIDEO_TRANSCRIPTION) {
+                    com.nmiet.app.ui.screens.teacher.VideoTranscriptionScreen(
+                        repository = repository,
+                        onBackClick = { navController.popBackStack() },
+                        onOpenNotes = { topicId -> navController.navigate("notes_view/$topicId") },
+                        onOpenMastery = { navController.navigate(Screen.Mastery.route) }
                     )
                 }
 
