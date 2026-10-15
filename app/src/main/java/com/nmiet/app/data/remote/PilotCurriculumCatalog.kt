@@ -334,6 +334,20 @@ object PilotCurriculumCatalog {
                 isAvailableOffline = true
             ),
             CurriculumNode(
+                id = "curr-node-brain-1",
+                board = Board.ODISHA_STATE,
+                classGrade = 9,
+                subject = "Science & Biology (ଜୀବବିଜ୍ଞାନ / जीवविज्ञान)",
+                chapterTitleOdia = "ଅଧ୍ୟାୟ ୫: ସ୍ନାୟୁତନ୍ତ୍ର ଓ ମାନବ ମସ୍ତିଷ୍କ",
+                chapterTitleEnglish = "Chapter 5: Human Nervous System & Brain Anatomy",
+                topicTitleOdia = "ମସ୍ତିଷ୍କର ମୁଖ୍ୟ ଭାଗ: ସେରେବ୍ରମ୍, ସେରେବେଲମ୍, ବ୍ରେନ୍-ଷ୍ଟେମ୍ ଓ ଆମିଗଡାଲା",
+                topicTitleEnglish = "The Human Brain: The Master Control Center",
+                learningObjectiveOdia = "ମାନବ ମସ୍ତିଷ୍କର ୪ଟି ମୁଖ୍ୟ ଅଂଶର ଗଠନ, କାର୍ଯ୍ୟ ଏବଂ ନ୍ୟୁରୋପ୍ଲାଷ୍ଟିସିଟି ବୁଝିବା।",
+                learningObjectiveEnglish = "Master functional divisions of the cerebrum, cerebellum, brainstem, and amygdala.",
+                packId = "class9_bio_human_brain",
+                isAvailableOffline = true
+            ),
+            CurriculumNode(
                 id = "curr-node-3",
                 board = Board.CBSE,
                 classGrade = 9,

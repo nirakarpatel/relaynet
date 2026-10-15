@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -601,7 +602,22 @@ fun LearningPackCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     StoredOfflineBadge()
-                    if (pack.origin == ContentOrigin.P2P_RECEIVED || pack.origin == ContentOrigin.P2P_SENT || pack.isReceivedViaMesh) {
+                    if (pack.packId == "class9_bio_human_brain") {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF7C3AED).copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "🎬 Video Learning Pack",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF7C3AED),
+                                maxLines = 1
+                            )
+                        }
+                    } else if (pack.origin == ContentOrigin.P2P_RECEIVED || pack.origin == ContentOrigin.P2P_SENT || pack.isReceivedViaMesh) {
                         val peer = pack.peerSenderName ?: "Node-02"
                         Box(
                             modifier = Modifier
@@ -714,12 +730,22 @@ fun LearningPackCard(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Action buttons: "Open Lesson", "Take Diagnostic Quiz", and "Share via Bluetooth"
-            val openLessonBtnText = when (currentLanguage) {
-                AppLanguage.ENGLISH_ONLY -> "Open Lesson"
-                AppLanguage.ODIA_ONLY -> "ପାଠ ଖୋଲନ୍ତୁ"
-                AppLanguage.HINDI_ONLY -> "पाठ खोलें"
-                AppLanguage.BILINGUAL_EN_HI -> "Open Lesson"
-                AppLanguage.BILINGUAL_EN_OR -> "Open Lesson"
+            val isVideoPack = pack.packId == "class9_bio_human_brain"
+            val openLessonBtnText = when {
+                isVideoPack -> when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Watch Video"
+                    AppLanguage.ODIA_ONLY -> "ଭିଡିଓ ଦେଖନ୍ତୁ"
+                    AppLanguage.HINDI_ONLY -> "वीडियो देखें"
+                    AppLanguage.BILINGUAL_EN_HI -> "Watch Video"
+                    AppLanguage.BILINGUAL_EN_OR -> "Watch Video"
+                }
+                else -> when (currentLanguage) {
+                    AppLanguage.ENGLISH_ONLY -> "Open Lesson"
+                    AppLanguage.ODIA_ONLY -> "ପାଠ ଖୋଲନ୍ତୁ"
+                    AppLanguage.HINDI_ONLY -> "पाठ खोलें"
+                    AppLanguage.BILINGUAL_EN_HI -> "Open Lesson"
+                    AppLanguage.BILINGUAL_EN_OR -> "Open Lesson"
+                }
             }
             val takeQuizBtnText = when (currentLanguage) {
                 AppLanguage.ENGLISH_ONLY -> "Take Quiz"
@@ -745,7 +771,11 @@ fun LearningPackCard(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                 ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.MenuBook, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(
+                        imageVector = if (isVideoPack) Icons.Default.Videocam else Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(openLessonBtnText, fontSize = 11.sp, maxLines = 1)
                 }

@@ -765,6 +765,9 @@ class ContentRepositoryImpl(
         )
         learningDao.insertPack(LearningPackEntity.fromDomain(pilotClass10Pack))
 
+        // Seed Canonical Pack: The Human Brain & Its Core Functions
+        com.nmiet.app.data.local.entities.BrainPackSeed.seedBrainPackIntoDatabase(learningDao)
+
         // Preload an initial topic mastery (61% Developing tier)
         learningDao.insertOrUpdateMastery(
             TopicMasteryEntity(

@@ -118,6 +118,10 @@ dependencies {
         exclude(group = "org.jetbrains.kotlin")
     }
 
+    // Media3 ExoPlayer
+    implementation("androidx.media3:media3-exoplayer:1.3.1")
+    implementation("androidx.media3:media3-ui:1.3.1")
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.json)

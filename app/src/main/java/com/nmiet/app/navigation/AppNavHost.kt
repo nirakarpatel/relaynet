@@ -52,6 +52,8 @@ import com.nmiet.app.ui.screens.curriculum.CurriculumScreen
 import com.nmiet.app.ui.screens.curriculum.CurriculumViewModel
 import com.nmiet.app.ui.screens.customquiz.CustomQuizRunnerScreen
 import com.nmiet.app.ui.screens.customquiz.CustomQuizViewModel
+import com.nmiet.app.data.local.entities.BrainPackSeed
+import com.nmiet.app.ui.screens.lesson.BrainVideoLessonScreen
 import com.nmiet.app.ui.screens.lesson.LessonReaderScreen
 import com.nmiet.app.ui.screens.mastery.MasteryScreen
 import com.nmiet.app.ui.screens.mastery.MasteryViewModel
@@ -147,6 +149,7 @@ fun AppNavHost(
             currentRoute?.startsWith("downloads") == true ||
             currentRoute?.startsWith("study_planner") == true ||
             currentRoute?.startsWith("teacher_tools") == true ||
+            currentRoute?.startsWith(Routes.BRAIN_VIDEO_LESSON) == true ||
             currentRoute?.startsWith(Routes.LOCAL_AI_PLAYGROUND) == true
 
     Scaffold(
@@ -335,6 +338,18 @@ fun AppNavHost(
                     )
                 }
 
+                composable(Routes.BRAIN_VIDEO_LESSON) {
+                    BrainVideoLessonScreen(
+                        onBackClick = { navController.popBackStack() },
+                        onTakeDiagnostics = { targetPackId ->
+                            navController.navigate(Routes.quizRunner(targetPackId))
+                        },
+                        onShareMesh = {
+                            navController.navigate(Routes.MESH_SHARE)
+                        }
+                    )
+                }
+
                 composable(
                     route = Routes.LESSON_READER,
                     arguments = listOf(
@@ -348,15 +363,27 @@ fun AppNavHost(
                 ) { backStackEntry ->
                     val packId = backStackEntry.arguments?.getString("packId") ?: ""
                     val section = backStackEntry.arguments?.getString("section")
-                    LessonReaderScreen(
-                        packId = packId,
-                        targetSection = section,
-                        repository = repository,
-                        onBackClick = { navController.popBackStack() },
-                        onStartQuiz = { targetPackId ->
-                            navController.navigate(Routes.quizRunner(targetPackId))
-                        }
-                    )
+                    if (packId == BrainPackSeed.PACK_ID) {
+                        BrainVideoLessonScreen(
+                            onBackClick = { navController.popBackStack() },
+                            onTakeDiagnostics = { targetPackId ->
+                                navController.navigate(Routes.quizRunner(targetPackId))
+                            },
+                            onShareMesh = {
+                                navController.navigate(Routes.MESH_SHARE)
+                            }
+                        )
+                    } else {
+                        LessonReaderScreen(
+                            packId = packId,
+                            targetSection = section,
+                            repository = repository,
+                            onBackClick = { navController.popBackStack() },
+                            onStartQuiz = { targetPackId ->
+                                navController.navigate(Routes.quizRunner(targetPackId))
+                            }
+                        )
+                    }
                 }
 
                 composable(

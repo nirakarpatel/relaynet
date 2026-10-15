@@ -38,11 +38,12 @@ class MainActivity : ComponentActivity() {
         // 2. Initialize Learning Platform Repository
         val repository = ContentRepositoryImpl(learningDao = learningDao)
 
-        // Preload pilot catalog data if empty on first run
+        // Preload pilot catalog data and Brain Learning Pack if empty or absent
         lifecycleScope.launch(Dispatchers.IO) {
             if (learningDao.countPacks() == 0) {
                 repository.resetToPilotDemoPacks()
             }
+            com.nmiet.app.data.local.entities.BrainPackSeed.seedBrainPackIntoDatabase(learningDao, applicationContext)
         }
 
         // 3. Initialize Transfer Managers with pack & note ingestion callback

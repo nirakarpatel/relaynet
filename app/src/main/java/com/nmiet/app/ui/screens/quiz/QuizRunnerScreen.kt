@@ -65,6 +65,7 @@ fun QuizRunnerScreen(
     val correctCount by viewModel.correctCount.collectAsState()
     val weakConcepts by viewModel.weakConcepts.collectAsState()
     val isFinished by viewModel.isQuizFinished.collectAsState()
+    val diagnosticBanner by viewModel.diagnosticBanner.collectAsState()
 
     Scaffold(
         topBar = {
@@ -338,6 +339,53 @@ fun QuizRunnerScreen(
                     // Mandatory Misconception Diagnostic Card rendering immediately on submit
                     AnimatedVisibility(visible = isSubmitted) {
                         Column(modifier = Modifier.padding(top = 16.dp)) {
+                            // Targeted Diagnostic Interceptor Banner (Prompt Requirement)
+                            if (diagnosticBanner != null) {
+                                val banner = diagnosticBanner!!
+                                val localizedMessage = when (language) {
+                                    AppLanguage.ENGLISH_ONLY -> banner.messageEnglish
+                                    AppLanguage.ODIA_ONLY -> banner.messageOdia
+                                    AppLanguage.HINDI_ONLY -> banner.messageHindi
+                                    AppLanguage.BILINGUAL_EN_HI -> "${banner.messageEnglish}\n\n${banner.messageHindi}"
+                                    AppLanguage.BILINGUAL_EN_OR -> "${banner.messageEnglish}\n\n${banner.messageOdia}"
+                                }
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Warning,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = banner.title,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = localizedMessage,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            lineHeight = 18.sp,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            }
+
                             if (selectedOption != currentQuestion.correctIndex) {
                                 // Amber Misconception Diagnostic Card
                                 Card(

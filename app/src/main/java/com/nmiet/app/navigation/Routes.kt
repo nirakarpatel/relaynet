@@ -59,6 +59,7 @@ object Routes {
     const val PRIVACY_SECURITY = "profile/privacy_security"
     const val ABOUT_RELAYNET = "profile/about"
 
+    const val BRAIN_VIDEO_LESSON = "brain_lesson"
     const val LESSON_READER = "lesson/{packId}?section={section}"
     const val QUIZ_RUNNER = "quiz/{packId}?topicTag={topicTag}"
     const val NOTES_VIEW = "notes?topicId={topicId}"
@@ -68,6 +69,8 @@ object Routes {
     const val TEACHER_TOOLS = "teacher_tools"
     const val VIDEO_TRANSCRIPTION = "video_transcription"
     const val LOCAL_AI_PLAYGROUND = "local_ai_playground"
+
+    fun brainLesson(): String = BRAIN_VIDEO_LESSON
 
     fun lessonReader(packId: String, section: String? = null): String =
         if (!section.isNullOrBlank()) "lesson/$packId?section=$section" else "lesson/$packId"
