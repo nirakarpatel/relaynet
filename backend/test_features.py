@@ -61,7 +61,36 @@ def test_all():
     transcript_preview = res.json()['transcript'].encode('ascii', errors='backslashreplace').decode('ascii')
     print('7. Audio Transcription OK:', transcript_preview)
 
-    print('\n>>> ALL 7 BACKEND FEATURES VERIFIED AND PASSING! <<<')
+    # 8. Visual Generation - Academic Diagram (Valid)
+    res = client.post('/tutor/generate-visual', json={
+        'user_prompt': 'Photosynthesis Thylakoid Membrane Flowchart',
+        'subject_context': 'Class 9 Science (Biology)',
+        'language_mode': 'en_or'
+    })
+    assert res.status_code == 200, res.text
+    vis_data = res.json()
+    assert vis_data['status'] == 'success'
+    assert vis_data['has_image'] is True
+    assert len(vis_data['imageBase64']) > 100
+    print('8. Visual Generator Academic OK: Generated 16:9 diagram (base64 len:', len(vis_data['imageBase64']), ')')
+
+    # 9. Visual Generation - Non-Academic Meme (Guardrail Refusal)
+    res = client.post('/tutor/generate-visual', json={
+        'user_prompt': 'funny cat meme playing pubg gaming',
+        'subject_context': 'Class 9 Science (Biology)',
+        'language_mode': 'en_hi'
+    })
+    assert res.status_code == 200, res.text
+    refusal_data = res.json()
+    assert refusal_data['status'] == 'refused'
+    assert refusal_data['has_image'] is False
+    assert 'assistant' in refusal_data['message'] or 'सहायक' in refusal_data['message'] or 'ସାଥୀ' in refusal_data['message']
+    msg_preview = refusal_data['message'].encode('ascii', errors='backslashreplace').decode('ascii')
+    print('9. Visual Generator Guardrail Refusal OK:', msg_preview)
+
+    print('\n>>> ALL 9 BACKEND FEATURES VERIFIED AND PASSING! <<<')
 
 if __name__ == '__main__':
     test_all()
+
+

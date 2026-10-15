@@ -17,6 +17,7 @@ data class TutorMessage(
     val sourceChapter: String? = null,
     val isStudyRelated: Boolean = true,
     val imageBitmap: Bitmap? = null,
+    val imageBase64: String? = null,
     val sourceTags: List<String> = emptyList(),
     val isCloudAI: Boolean = false,
     val isNemotronReasoning: Boolean = false

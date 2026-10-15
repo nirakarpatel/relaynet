@@ -110,6 +110,9 @@ dependencies {
     // Google Play Services Nearby Connections
     implementation(libs.play.services.nearby)
 
+    // Google Generative AI Client SDK (Gemini Multimodal 1.5 Flash)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
     // LiteRT-LM On-Device LLM Runtime
     implementation(libs.litertlm.android) {
         exclude(group = "org.jetbrains.kotlin")
