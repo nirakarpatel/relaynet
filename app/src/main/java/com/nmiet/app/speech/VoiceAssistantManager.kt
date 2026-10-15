@@ -9,9 +9,13 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.nmiet.app.data.local.AppDatabase
 import com.nmiet.app.data.local.LanguageManager
+import com.nmiet.app.data.remote.FluxDiagramService
 import com.nmiet.app.data.remote.GeminiKeyRotator
+import com.nmiet.app.data.remote.GeminiMultimodalService
 import com.nmiet.app.domain.model.AppLanguage
+import com.nmiet.app.domain.model.StudyLevel
 import com.nmiet.app.domain.repository.ContentRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -46,14 +51,16 @@ sealed interface VoiceUiState {
         val textEnglish: String = answerText,
         val textOdia: String = answerText,
         val isPaused: Boolean = false,
-        val soundLevelRms: Float = 0f
+        val soundLevelRms: Float = 0f,
+        val generatedDiagramBase64: String? = null
     ) : VoiceUiState
 
     data class Paused(
         val query: String,
         val answerText: String,
         val textEnglish: String = answerText,
-        val textOdia: String = answerText
+        val textOdia: String = answerText,
+        val generatedDiagramBase64: String? = null
     ) : VoiceUiState
 
     data class ActionExecuted(
@@ -102,7 +109,9 @@ class VoiceAssistantManager(
     private val repository: ContentRepository,
     private val languageManager: LanguageManager,
     private val geminiKeyRotator: GeminiKeyRotator = GeminiKeyRotator.getInstance(),
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job()),
+    private val geminiMultimodalService: GeminiMultimodalService = GeminiMultimodalService(geminiKeyRotator),
+    private val fluxDiagramService: FluxDiagramService = FluxDiagramService()
 ) : RecognitionListener, TextToSpeech.OnInitListener {
 
     private val _uiState = MutableStateFlow<VoiceUiState>(VoiceUiState.Idle)
@@ -322,15 +331,25 @@ class VoiceAssistantManager(
     override fun onEndOfSpeech() {}
     override fun onEvent(eventType: Int, params: Bundle?) {}
 
+    // --- Diagram Intent Detector Helper ---
+    fun isDiagramRequest(query: String): Boolean {
+        val q = query.lowercase().trim()
+        return q.contains("diagram") || q.contains("flowchart") || 
+               q.contains("draw") || q.contains("generate image") || 
+               q.contains("picture of") || q.contains("bond structure") ||
+               q.contains("structure of") || q.contains("चित्र") || q.contains("ଚିତ୍ର")
+    }
+
     // --- Voice Intent Parser & Academic Tutor Route ---
 
     fun parseVoiceIntent(spokenText: String) {
         val lower = spokenText.lowercase().trim()
 
-        // 1. Navigation: "Open Photosynthesis" / "ଆଲୋକ ଶ୍ଳେଷଣ ଖୋଲ"
-        if (lower.contains("photosynthesis") || lower.contains("ଆଲୋକ ଶ୍ଳେଷଣ") ||
-            lower.contains("open lesson") || lower.contains("ପାଠ ଖୋଲ") || lower.contains("chapter 4")
-        ) {
+        // 1. Navigation: Explicit request to open a specific lesson
+        val isExplicitLessonOpen = (lower.startsWith("open lesson") || lower.startsWith("open chapter") ||
+                lower.startsWith("ପାଠ ଖୋଲ") || lower.startsWith("ଅଧ୍ୟାୟ ଖୋଲ") ||
+                lower.startsWith("पाठ खोलो")) && (lower.contains("photosynthesis") || lower.contains("chapter 4") || lower.contains("ଆଲୋକ ଶ୍ଳେଷଣ"))
+        if (isExplicitLessonOpen) {
             val route = "lesson/relaynet_class9_science_photosynthesis_v1"
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
@@ -346,9 +365,10 @@ class VoiceAssistantManager(
         }
 
         // 2. Navigation: "Start Quiz" / "କୁଇଜ୍ ଆରମ୍ଭ କର" / "test"
-        if (lower.contains("quiz") || lower.contains("କୁଇଜ") || lower.contains("test") ||
-            lower.contains("start quiz") || lower.contains("ପରୀକ୍ଷା")
-        ) {
+        val isQuizIntent = lower.startsWith("start quiz") || lower.startsWith("open quiz") ||
+                lower.startsWith("କୁଇଜ୍ ଆରମ୍ଭ") || lower.startsWith("क्विज शुरू") ||
+                lower == "quiz" || lower == "start quiz" || lower == "test"
+        if (isQuizIntent) {
             val route = "quiz/relaynet_class9_science_photosynthesis_v1"
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
@@ -364,9 +384,9 @@ class VoiceAssistantManager(
         }
 
         // 3. Navigation: "Generate Notes" / "ନୋଟ୍ ତିଆରି କର" / "revision notes"
-        if (lower.contains("notes") || lower.contains("ନୋଟ") || lower.contains("revision") ||
-            lower.contains("generate note") || lower.contains("ସାରାଂଶ")
-        ) {
+        val isNotesIntent = lower.startsWith("generate notes") || lower.startsWith("make notes") ||
+                lower.startsWith("open notes") || lower.startsWith("ନୋଟ୍ ତିଆରି") || lower == "notes"
+        if (isNotesIntent) {
             val route = "notes"
             _uiState.value = VoiceUiState.ActionExecuted(
                 recognizedText = spokenText,
@@ -381,38 +401,95 @@ class VoiceAssistantManager(
             return
         }
 
-        // 4. Academic Question -> Gemini API Rotator with Failover & Fallback
+        // 4. Academic doubt / diagram request -> dynamic multimodal service
+        onSpeechRecognized(spokenText)
+    }
+
+    fun onSpeechRecognized(spokenQuery: String) {
+        _uiState.value = VoiceUiState.Thinking(
+            recognizedQuery = spokenQuery,
+            activeKeyIndex = geminiKeyRotator.getActiveKeyIndex()
+        )
+
         scope.launch {
+            val activeLanguage = languageManager.currentLanguage.value
             val config = getSpeechLanguageConfig()
-            _uiState.value = VoiceUiState.Thinking(
-                recognizedQuery = spokenText,
-                activeKeyIndex = geminiKeyRotator.getActiveKeyIndex()
-            )
 
-            val geminiResult = geminiKeyRotator.queryAcademicTutor(
-                prompt = spokenText,
-                languageMode = config.promptLanguageMode
-            )
+            var currentGrade = "Class 9"
+            var currentBoard = "CBSE / Odisha Board"
+            val studyLevel = StudyLevel.INTERMEDIATE
+            try {
+                val profile = repository.getLearnerProfileFlow().first()
+                currentGrade = "Class ${profile.classGrade}"
+                currentBoard = profile.board.displayName
+            } catch (_: Exception) {}
 
-            val responseText = geminiResult.getOrElse { error ->
-                Log.w("VoiceAssistantManager", "Gemini keys exhausted or failed (${error.message}). Falling back to local offline tutor.")
-                val localTutor = repository.askTutor(questionText = spokenText)
-                when (languageManager.currentLanguage.value) {
-                    AppLanguage.ODIA_ONLY, AppLanguage.BILINGUAL_EN_OR -> {
-                        if (localTutor.textOdia.isNotBlank()) localTutor.textOdia else localTutor.textEnglish
+            // Check for image/diagram request intent first
+            if (isDiagramRequest(spokenQuery)) {
+                val diagramResult = fluxDiagramService.generateDiagram(
+                    prompt = spokenQuery,
+                    subjectContext = "$currentGrade $currentBoard Science",
+                    language = activeLanguage
+                )
+
+                val imageBase64 = diagramResult.getOrNull()
+                val caption = if (diagramResult.isSuccess && !imageBase64.isNullOrBlank()) {
+                    when (activeLanguage) {
+                        AppLanguage.ODIA_ONLY -> "ଏଠାରେ '$spokenQuery' ପାଇଁ ପାଠ୍ୟପୁସ୍ତକ ଚିତ୍ର ପ୍ରସ୍ତୁତ କରାଯାଇଛି:"
+                        AppLanguage.HINDI_ONLY -> "यहाँ '$spokenQuery' के लिए पाठ्यपुस्तक का चित्र प्रस्तुत है:"
+                        else -> "Here is the scientific textbook diagram for '$spokenQuery':"
                     }
-                    else -> localTutor.textEnglish
+                } else {
+                    when (activeLanguage) {
+                        AppLanguage.ODIA_ONLY -> "ଚିତ୍ର ପ୍ରସ୍ତୁତ କରିବାରେ ଅସୁବିଧା ହେଲା। ଦୟାକରି ପୁନର୍ବାର ଚେଷ୍ଟା କରନ୍ତୁ।"
+                        AppLanguage.HINDI_ONLY -> "चित्र निर्माण में समस्या आई। कृपया पुनः प्रयास करें।"
+                        else -> "Could not generate diagram at this moment. Please try again."
+                    }
+                }
+
+                _uiState.value = VoiceUiState.Speaking(
+                    query = spokenQuery,
+                    answerText = caption,
+                    textEnglish = caption,
+                    textOdia = caption,
+                    isPaused = false,
+                    generatedDiagramBase64 = imageBase64
+                )
+                speakUtterance(text = caption, config = config)
+            } else {
+                // Dynamic Academic Solver via Gemini API with rotating keys
+                val answerResult = geminiMultimodalService.solveTextQuery(
+                    query = spokenQuery,
+                    language = activeLanguage,
+                    grade = currentGrade,
+                    board = currentBoard,
+                    studyLevel = studyLevel
+                )
+
+                answerResult.onSuccess { answerText ->
+                    _uiState.value = VoiceUiState.Speaking(
+                        query = spokenQuery,
+                        answerText = answerText,
+                        textEnglish = answerText,
+                        textOdia = answerText,
+                        isPaused = false
+                    )
+                    speakUtterance(text = answerText, config = config)
+                }.onFailure { error ->
+                    Log.w("VoiceAssistantManager", "Gemini solveTextQuery failed (${error.message}). Falling back to Room SQLite search.")
+                    // Graceful offline fallback: ONLY use topic-matching keyword search in Room SQLite, NEVER a hardcoded string!
+                    val localFallback = AppDatabase.getInstance(context).learningDao()
+                        .searchLessonContent(spokenQuery) ?: "I could not find an answer offline. Please reconnect to cloud AI."
+                    _uiState.value = VoiceUiState.Speaking(
+                        query = spokenQuery,
+                        answerText = localFallback,
+                        textEnglish = localFallback,
+                        textOdia = localFallback,
+                        isPaused = false
+                    )
+                    speakUtterance(text = localFallback, config = config)
                 }
             }
-
-            _uiState.value = VoiceUiState.Speaking(
-                query = spokenText,
-                answerText = responseText,
-                textEnglish = responseText,
-                textOdia = responseText,
-                isPaused = false
-            )
-            speakUtterance(text = responseText, config = config)
         }
     }
 

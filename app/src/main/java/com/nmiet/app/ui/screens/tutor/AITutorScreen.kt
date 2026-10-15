@@ -97,8 +97,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nmiet.app.domain.model.AppLanguage
+import com.nmiet.app.domain.model.TutorChatMessage
 import com.nmiet.app.domain.model.TutorMessage
 import com.nmiet.app.domain.model.TutorSender
+import com.nmiet.app.domain.model.decodeBase64ToBitmap
 import com.nmiet.app.ui.components.AppTopBar
 import com.nmiet.app.ui.components.VoiceInputBar
 import com.nmiet.app.ui.theme.AccentCyan
@@ -112,7 +114,7 @@ fun AITutorScreen(
 ) {
     val context = LocalContext.current
     val currentLanguage by viewModel.currentLanguage.collectAsState()
-    val messages by viewModel.messages.collectAsState()
+    val messages by viewModel.chatMessages.collectAsState()
     val syncStatus by viewModel.syncStatus.collectAsState()
     val inputText by viewModel.inputText.collectAsState()
     val attachedImage by viewModel.attachedImage.collectAsState()
@@ -210,7 +212,7 @@ fun AITutorScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (syncStatus.isOnline)
-                            "Online Mode: [Cloud AI] Gemini Vision & FLUX.2-Klein synthesis active"
+                            "Online Mode: [Cloud AI] Academic Solver & Smart Visuals Active"
                         else
                             "Offline Mode: [Offline Grounded] using local Room SQLite FTS cache",
                         fontSize = 11.sp,
@@ -279,14 +281,11 @@ fun AITutorScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { it.id }) { msg ->
-                    TutorMessageBubble(
+                    TutorMessageCard(
                         message = msg,
-                        isOnlineContext = syncStatus.isOnline,
-                        currentLanguage = currentLanguage,
                         isCurrentlySpeaking = (currentlySpeakingMessageId == msg.id && isTtsSpeaking),
                         isCurrentMessagePaused = (currentlySpeakingMessageId == msg.id && isTtsPaused),
-                        onToggleSpeak = { text -> viewModel.toggleSpeakMessage(msg.id, text, context) },
-                        isScanningActive = (isScanningImage && msg == messages.lastOrNull { it.sender == TutorSender.USER && it.imageBitmap != null })
+                        onToggleSpeak = { text -> viewModel.toggleSpeakMessage(msg.id, text, context) }
                     )
                 }
 
@@ -300,8 +299,8 @@ fun AITutorScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = when {
-                                    isGeneratingVisual -> "Synthesizing textbook diagram with FLUX.2-Klein (4-Step NIM)..."
-                                    isScanningImage -> "Scanning textbook question with Gemini Vision (rotating 5 keys)..."
+                                    isGeneratingVisual -> "Synthesizing textbook diagram with Smart Visuals..."
+                                    isScanningImage -> "Scanning textbook problem and extracting equations..."
                                     else -> "RelayNet AI Tutor is solving with academic grounding..."
                                 },
                                 fontSize = 12.sp,
@@ -364,7 +363,7 @@ fun AITutorScreen(
                                         viewModel.pauseTts()
                                     } else {
                                         val activeMsg = messages.find { it.id == currentlySpeakingMessageId }
-                                        val text = activeMsg?.getPrimaryText(currentLanguage) ?: ""
+                                        val text = activeMsg?.text ?: ""
                                         viewModel.speakResponse(text, context, currentlySpeakingMessageId)
                                     }
                                 },
@@ -469,6 +468,116 @@ fun AITutorScreen(
             )
         }
     }
+}
+
+@Composable
+fun TutorMessageCard(
+    message: TutorChatMessage,
+    isCurrentlySpeaking: Boolean = false,
+    isCurrentMessagePaused: Boolean = false,
+    onToggleSpeak: ((String) -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (message.isFromUser) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (message.isFromUser) "You" else "RelayNet AI Tutor",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!message.isFromUser && onToggleSpeak != null && !message.text.isNullOrBlank()) {
+                        IconButton(
+                            onClick = { onToggleSpeak(message.text) },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = when {
+                                    isCurrentlySpeaking -> Icons.Default.Pause
+                                    isCurrentMessagePaused -> Icons.Default.PlayArrow
+                                    else -> Icons.Default.VolumeUp
+                                },
+                                contentDescription = if (isCurrentlySpeaking) "Pause Voice" else "Listen to Tutor",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = message.sourceTag,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // User Uploaded Photo (if present)
+            message.imageBitmap?.let { bmp ->
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = "User submitted photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Generated Diagram (if present)
+            message.generatedDiagramBase64?.let { b64 ->
+                val bitmap = remember(b64) { decodeBase64ToBitmap(b64) }
+                bitmap?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = "Generated Diagram",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // Message Text (Guaranteed visible styling)
+            message.text?.let { textContent ->
+                Text(
+                    text = textContent,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 22.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TutorMessageCard(message: TutorChatMessage) {
+    TutorMessageCard(message = message, isCurrentlySpeaking = false, isCurrentMessagePaused = false, onToggleSpeak = null)
 }
 
 @Composable
@@ -595,25 +704,25 @@ fun TutorMessageBubble(
                                 Spacer(modifier = Modifier.width(6.dp))
                             }
 
-                            // Origin Badge: [Cloud AI] FLUX.2 vs [Cloud AI] Gemini Vision vs [Offline Grounded] vs [Cloud AI] Gemini 1.5
+                            // Origin Badge: [Cloud AI] Smart Visuals vs [Cloud AI] Academic Solver vs [Offline Grounded] vs [Cloud AI] RelayNet Tutor
                             val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
                             val badgeText = when {
-                                !message.imageBase64.isNullOrBlank() -> "[Cloud AI] FLUX.2"
-                                message.isNemotronReasoning -> "[Cloud AI] Gemini Vision"
+                                !message.imageBase64.isNullOrBlank() -> "[Cloud AI] Smart Visuals"
+                                message.isNemotronReasoning -> "[Cloud AI] Academic Solver"
                                 isOfflineGrounded -> "[Offline Grounded]"
-                                else -> "[Cloud AI] Gemini 1.5"
+                                else -> "[Cloud AI] RelayNet Tutor"
                             }
                             val badgeBg = when {
                                 !message.imageBase64.isNullOrBlank() -> AccentCyan.copy(alpha = 0.2f)
                                 message.isNemotronReasoning -> Color(0xFF6B21A8).copy(alpha = 0.15f)
                                 isOfflineGrounded -> SuccessGreen.copy(alpha = 0.15f)
-                                else -> AccentCyan.copy(alpha = 0.15f)
+                                else -> PrimaryBlue.copy(alpha = 0.12f)
                             }
                             val badgeTextColor = when {
                                 !message.imageBase64.isNullOrBlank() -> PrimaryBlue
                                 message.isNemotronReasoning -> Color(0xFF9333EA)
                                 isOfflineGrounded -> SuccessGreen
-                                else -> AccentCyan
+                                else -> PrimaryBlue
                             }
 
                             Box(
@@ -662,7 +771,7 @@ fun TutorMessageBubble(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Scanning textbook question with Gemini Vision...",
+                                        text = "Scanning textbook problem and extracting equations...",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = Color.White
@@ -754,7 +863,7 @@ fun TutorMessageBubble(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Synthesized Textbook Diagram (FLUX.2-Klein • 16:9 HD)",
+                                text = "Synthesized Textbook Diagram (Smart Visuals • 16:9 HD)",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = PrimaryBlue
@@ -766,7 +875,7 @@ fun TutorMessageBubble(
                     if (showFullScreenZoom) {
                         FullScreenZoomableImageDialog(
                             bitmap = tutorImageBitmap,
-                            title = "FLUX.2-Klein Textbook Diagram",
+                            title = "Smart Visuals Textbook Diagram",
                             onDismiss = { showFullScreenZoom = false }
                         )
                     }

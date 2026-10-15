@@ -55,19 +55,26 @@ class AITutorViewModel(
     // Unified chat message representation for modern Chat UI
     val chatMessages: StateFlow<List<TutorChatMessage>> = messages.map { list ->
         list.map { msg ->
+            val resolvedText = when (currentLanguage.value) {
+                AppLanguage.ENGLISH_ONLY -> msg.textEnglish.ifBlank { msg.textOdia }
+                AppLanguage.ODIA_ONLY -> msg.textOdia.ifBlank { msg.textEnglish }
+                AppLanguage.HINDI_ONLY -> msg.textHindi.ifBlank { msg.textEnglish }
+                else -> msg.textEnglish.ifBlank { msg.textOdia }.ifBlank { msg.textHindi }
+            }
             TutorChatMessage(
                 id = msg.id,
                 sender = if (msg.sender == TutorSender.USER) MessageSender.USER else MessageSender.TUTOR,
-                text = msg.textEnglish.ifBlank { msg.textOdia },
+                text = resolvedText,
                 userUploadedImageUri = null,
                 generatedDiagramBase64 = msg.imageBase64,
                 sourceTag = when {
-                    !msg.imageBase64.isNullOrBlank() -> "[Cloud AI] FLUX.2"
-                    msg.isNemotronReasoning -> "[Cloud AI] Gemini Vision"
+                    !msg.imageBase64.isNullOrBlank() -> "[Cloud AI] Smart Visuals"
+                    msg.isNemotronReasoning -> "[Cloud AI] Academic Solver"
                     msg.isOfflineGrounded -> "[Offline Grounded]"
-                    else -> "[Cloud AI] Gemini 1.5"
+                    else -> "[Cloud AI] RelayNet Tutor"
                 },
-                timestamp = msg.timestamp
+                timestamp = msg.timestamp,
+                imageBitmap = msg.imageBitmap
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -146,6 +153,11 @@ class AITutorViewModel(
         val sendQuery = query.trim()
         if (sendQuery.isBlank()) return
         _inputText.value = ""
+
+        if (isDiagramRequest(sendQuery) || FluxDiagramService.isDiagramIntent(sendQuery)) {
+            sendDiagramQuery(sendQuery)
+            return
+        }
 
         viewModelScope.launch {
             _isGenerating.value = true
@@ -362,13 +374,21 @@ class AITutorViewModel(
         }
 
         // 2. Diagram Generation
-        if (FluxDiagramService.isDiagramIntent(query)) {
+        if (isDiagramRequest(query) || FluxDiagramService.isDiagramIntent(query)) {
             sendDiagramQuery(query)
             return
         }
 
         // 3. Text / Voice Doubt Solving
         sendTextMessage(query)
+    }
+
+    fun isDiagramRequest(query: String): Boolean {
+        val q = query.lowercase().trim()
+        return q.contains("diagram") || q.contains("flowchart") || 
+               q.contains("draw") || q.contains("generate image") || 
+               q.contains("picture of") || q.contains("bond structure") ||
+               q.contains("structure of") || q.contains("चित्र") || q.contains("ଚିତ୍ର")
     }
 
     // VOICE TALK: SpeechRecognizer Integration

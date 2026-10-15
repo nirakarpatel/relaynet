@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,6 +68,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,6 +79,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.nmiet.app.data.local.LanguageManager
 import com.nmiet.app.data.remote.GeminiKeyRotator
+import com.nmiet.app.domain.model.decodeBase64ToBitmap
 import com.nmiet.app.speech.VoiceAssistantManager
 import com.nmiet.app.speech.VoiceUiState
 import com.nmiet.app.ui.theme.PrimaryBlue
@@ -336,18 +340,40 @@ private fun ListeningView(state: VoiceUiState.Listening) {
 }
 
 @Composable
-private fun ThinkingView(state: VoiceUiState.Thinking) {
-    val infiniteTransition = rememberInfiniteTransition(label = "thinkingDots")
-    val alphaAnim by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
+fun AnimatedThreeDots(
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primary,
+    dotSize: androidx.compose.ui.unit.Dp = 8.dp
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "threeDots")
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(3) { index ->
+            val scale by infiniteTransition.animateFloat(
+                initialValue = 0.4f,
+                targetValue = 1.0f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(500, delayMillis = index * 160, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "dot$index"
+            )
+            Box(
+                modifier = Modifier
+                    .size(dotSize)
+                    .scale(scale)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+        }
+    }
+}
 
+@Composable
+private fun ThinkingView(state: VoiceUiState.Thinking) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -355,89 +381,44 @@ private fun ThinkingView(state: VoiceUiState.Thinking) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(vertical = 12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Bolt,
-                contentDescription = "Thinking",
-                tint = WarningAmber,
-                modifier = Modifier.size(24.dp)
-            )
             Text(
-                text = "⚡ Thinking with Gemini...",
+                text = "Thinking...",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            AnimatedThreeDots()
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Key Rotator Status Chip
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = WarningAmber.copy(alpha = 0.12f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, WarningAmber.copy(alpha = 0.3f))
-        ) {
-            Text(
-                text = "Multi-Key Failover Active • Key #${state.activeKeyIndex} of 5",
-                style = MaterialTheme.typography.labelSmall,
-                color = WarningAmber,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Animated Thinking Dots
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            repeat(3) { index ->
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.8f,
-                    targetValue = 1.3f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(500, delayMillis = index * 160, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "dot$index"
-                )
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .scale(scale)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // User Query Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "Question:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = PrimaryBlue,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "\"${state.recognizedQuery}\"",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+        if (state.recognizedQuery.isNotBlank()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "Question:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PrimaryBlue,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "\"${state.recognizedQuery}\"",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
@@ -481,6 +462,24 @@ private fun SpeakingView(
         SpeakerWaveVisualizer(isPlaying = !state.isPaused)
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Generated Diagram (if present)
+        state.generatedDiagramBase64?.let { b64 ->
+            val bitmap = remember(b64) { decodeBase64ToBitmap(b64) }
+            bitmap?.let {
+                Image(
+                    bitmap = it.asImageBitmap(),
+                    contentDescription = "Generated Diagram",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(horizontal = 8.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
 
         // Spoken Academic Response Card
         Surface(
