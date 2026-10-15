@@ -315,6 +315,8 @@ fun VoiceInputBar(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
+                val canSend = (inputText.isNotBlank() || attachedImage != null) && !isGenerating
+
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = onInputTextChanged,
@@ -326,12 +328,21 @@ fun VoiceInputBar(
                     },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSend = {
+                            if (canSend) {
+                                onSendClick()
+                            }
+                        }
+                    )
                 )
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                val canSend = (inputText.isNotBlank() || attachedImage != null) && !isGenerating
                 IconButton(
                     onClick = onSendClick,
                     enabled = canSend,

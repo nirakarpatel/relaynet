@@ -202,21 +202,24 @@ class ContentRepositoryImpl(
     override suspend fun askTutor(
         questionText: String,
         imageBitmap: Bitmap?,
-        language: String
+        language: String,
+        insertUserMessage: Boolean
     ): TutorMessage = withContext(ioDispatcher) {
         val now = System.currentTimeMillis()
-        val userMsg = TutorMessage(
-            id = "msg_user_${UUID.randomUUID().toString().take(6)}",
-            sender = TutorSender.USER,
-            textOdia = questionText,
-            textEnglish = questionText,
-            timestamp = now,
-            isOfflineGrounded = false,
-            sourceChapter = null,
-            isStudyRelated = true,
-            imageBitmap = imageBitmap
-        )
-        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+        if (insertUserMessage) {
+            val userMsg = TutorMessage(
+                id = "msg_user_${UUID.randomUUID().toString().take(6)}",
+                sender = TutorSender.USER,
+                textOdia = questionText,
+                textEnglish = questionText,
+                timestamp = now,
+                isOfflineGrounded = false,
+                sourceChapter = null,
+                isStudyRelated = true,
+                imageBitmap = imageBitmap
+            )
+            learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+        }
 
         val isOnline = _syncStatus.value.isOnline
         var cloudResult: CloudTutorResponse? = null
@@ -250,24 +253,27 @@ class ContentRepositoryImpl(
         imageBitmap: Bitmap,
         userPrompt: String?,
         language: String,
-        curriculumContext: String
+        curriculumContext: String,
+        insertUserMessage: Boolean
     ): TutorMessage = withContext(ioDispatcher) {
         val now = System.currentTimeMillis()
         val promptText = userPrompt?.trim()?.ifBlank { null } ?: "Analyze and solve this textbook problem / equation."
 
-        // 1. Optimistic user message with attached image
-        val userMsg = TutorMessage(
-            id = "msg_user_${UUID.randomUUID().toString().take(6)}",
-            sender = TutorSender.USER,
-            textOdia = promptText,
-            textEnglish = promptText,
-            timestamp = now,
-            isOfflineGrounded = false,
-            sourceChapter = null,
-            isStudyRelated = true,
-            imageBitmap = imageBitmap
-        )
-        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+        // 1. Optimistic user message with attached image (if enabled)
+        if (insertUserMessage) {
+            val userMsg = TutorMessage(
+                id = "msg_user_${UUID.randomUUID().toString().take(6)}",
+                sender = TutorSender.USER,
+                textOdia = promptText,
+                textEnglish = promptText,
+                timestamp = now,
+                isOfflineGrounded = false,
+                sourceChapter = null,
+                isStudyRelated = true,
+                imageBitmap = imageBitmap
+            )
+            learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+        }
 
         // 2. Call backend /tutor/scan-and-solve endpoint
         val cloudScanResult = callScanAndSolveEndpoint(imageBitmap, promptText, language, curriculumContext)
@@ -337,11 +343,11 @@ class ContentRepositoryImpl(
                 textHindi = visualResult.message,
                 timestamp = System.currentTimeMillis(),
                 isOfflineGrounded = false,
-                sourceChapter = "FLUX.2-Klein Visual Tutor",
+                sourceChapter = "Smart Visuals Tutor",
                 isStudyRelated = visualResult.status == "success" && visualResult.hasImage,
                 imageBase64 = visualResult.imageBase64,
                 isCloudAI = true,
-                sourceTags = if (visualResult.hasImage) listOf("flux2_klein_4b", "textbook_diagram", "academic_visual") else listOf("visual_guardrail_refusal", "non_subject_blocked")
+                sourceTags = if (visualResult.hasImage) listOf("smart_visuals", "textbook_diagram", "academic_visual") else listOf("visual_guardrail_refusal", "non_subject_blocked")
             )
         } else {
             // Local fallback guardrail & offline handling
@@ -369,7 +375,7 @@ class ContentRepositoryImpl(
                     id = "msg_visual_offline_${UUID.randomUUID().toString().take(6)}",
                     sender = TutorSender.TUTOR,
                     textOdia = "ଚିତ୍ର ପ୍ରସ୍ତୁତ କରିବା ପାଇଁ କ୍ଲାଉଡ୍ ସଂଯୋଗ ଆବଶ୍ୟକ। ଆପଣଙ୍କ ପ୍ରଶ୍ନ '$promptText' ପାଇଁ ସ୍ଥାନୀୟ ବିଜ୍ଞାନ ପାଠ୍ୟକ୍ରମ ଉପଲବ୍ଧ।",
-                    textEnglish = "Visual diagram generation requires active connectivity to FLUX.2 Klein on NVIDIA NIM. Text lessons for '$promptText' remain available offline in your local library.",
+                    textEnglish = "Visual diagram generation requires active cloud connectivity. Text lessons for '$promptText' remain available offline in your local library.",
                     textHindi = "चित्र निर्माण के लिए क्लाउड कनेक्टिविटी आवश्यक है। '$promptText' के लिए स्थानीय विज्ञान पाठ उपलब्ध हैं।",
                     timestamp = System.currentTimeMillis(),
                     isOfflineGrounded = true,
@@ -444,7 +450,7 @@ class ContentRepositoryImpl(
                         message = json.optString("message", ""),
                         imageBase64 = if (json.has("imageBase64") && !json.isNull("imageBase64")) json.getString("imageBase64") else null,
                         hasImage = json.optBoolean("has_image", false),
-                        source = json.optString("source", "[Cloud AI] FLUX.2-Klein (4B)")
+                        source = json.optString("source", "[Cloud AI] Smart Visuals")
                     )
                 }
             } catch (_: Exception) {

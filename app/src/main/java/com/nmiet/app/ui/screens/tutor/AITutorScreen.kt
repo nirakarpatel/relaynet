@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -292,20 +293,20 @@ fun AITutorScreen(
                 if (isGenerating) {
                     item {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = when {
-                                    isGeneratingVisual -> "Synthesizing textbook diagram with Smart Visuals..."
-                                    isScanningImage -> "Scanning textbook problem and extracting equations..."
-                                    else -> "RelayNet AI Tutor is solving with academic grounding..."
-                                },
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Generating...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            // 3 animated bouncing dots
+                            AnimatedDots()
                         }
                     }
                 }
@@ -521,11 +522,13 @@ fun TutorMessageCard(
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text(
-                        text = message.sourceTag,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    if (!message.isFromUser && message.sourceTag.isNotBlank()) {
+                        Text(
+                            text = message.sourceTag,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
 
@@ -1102,5 +1105,73 @@ fun FullScreenZoomableImageDialog(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun AnimatedDots(
+    modifier: Modifier = Modifier,
+    dotSize: androidx.compose.ui.unit.Dp = 6.dp,
+    dotColor: Color = MaterialTheme.colorScheme.primary,
+    spaceBetween: androidx.compose.ui.unit.Dp = 4.dp
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "dots")
+    
+    val dot1Offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot1"
+    )
+    
+    val dot2Offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 300, delayMillis = 100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot2"
+    )
+    
+    val dot3Offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 300, delayMillis = 200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dot3"
+    )
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(spaceBetween),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(y = dot1Offset.dp)
+                .size(dotSize)
+                .clip(CircleShape)
+                .background(dotColor)
+        )
+        Box(
+            modifier = Modifier
+                .offset(y = dot2Offset.dp)
+                .size(dotSize)
+                .clip(CircleShape)
+                .background(dotColor)
+        )
+        Box(
+            modifier = Modifier
+                .offset(y = dot3Offset.dp)
+                .size(dotSize)
+                .clip(CircleShape)
+                .background(dotColor)
+        )
     }
 }

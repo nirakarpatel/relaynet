@@ -11,7 +11,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import com.nmiet.app.data.local.AppDatabase
 import com.nmiet.app.data.local.LanguageManager
-import com.nmiet.app.data.remote.FluxDiagramService
+import com.nmiet.app.data.remote.GeminiImageService
 import com.nmiet.app.data.remote.GeminiKeyRotator
 import com.nmiet.app.data.remote.GeminiMultimodalService
 import com.nmiet.app.domain.model.AppLanguage
@@ -111,7 +111,7 @@ class VoiceAssistantManager(
     private val geminiKeyRotator: GeminiKeyRotator = GeminiKeyRotator.getInstance(),
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job()),
     private val geminiMultimodalService: GeminiMultimodalService = GeminiMultimodalService(geminiKeyRotator),
-    private val fluxDiagramService: FluxDiagramService = FluxDiagramService()
+    private val geminiImageService: GeminiImageService = GeminiImageService(geminiKeyRotator)
 ) : RecognitionListener, TextToSpeech.OnInitListener {
 
     private val _uiState = MutableStateFlow<VoiceUiState>(VoiceUiState.Idle)
@@ -426,11 +426,7 @@ class VoiceAssistantManager(
 
             // Check for image/diagram request intent first
             if (isDiagramRequest(spokenQuery)) {
-                val diagramResult = fluxDiagramService.generateDiagram(
-                    prompt = spokenQuery,
-                    subjectContext = "$currentGrade $currentBoard Science",
-                    language = activeLanguage
-                )
+                val diagramResult = geminiImageService.generateEducationalDiagram(spokenQuery)
 
                 val imageBase64 = diagramResult.getOrNull()
                 val caption = if (diagramResult.isSuccess && !imageBase64.isNullOrBlank()) {
