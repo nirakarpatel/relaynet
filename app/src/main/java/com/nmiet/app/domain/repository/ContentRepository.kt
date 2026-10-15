@@ -37,14 +37,16 @@ interface ContentRepository {
     suspend fun askTutor(
         questionText: String,
         imageBitmap: Bitmap? = null,
-        language: String = "odia"
+        language: String = "odia",
+        insertUserMessage: Boolean = true
     ): TutorMessage
 
     suspend fun scanAndSolveTextbook(
         imageBitmap: Bitmap,
         userPrompt: String? = null,
         language: String = "en_or",
-        curriculumContext: String = "Class 9 Science - Biology / Life Science"
+        curriculumContext: String = "Class 9 Science - Biology / Life Science",
+        insertUserMessage: Boolean = true
     ): TutorMessage
 
     suspend fun generateVisualDiagram(

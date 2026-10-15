@@ -14,7 +14,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nmiet.app.data.local.LanguageManager
-import com.nmiet.app.data.remote.FluxDiagramService
+import com.nmiet.app.data.remote.GeminiImageService
+import com.nmiet.app.data.remote.GeminiKeyRotator
 import com.nmiet.app.data.remote.GeminiMultimodalService
 import com.nmiet.app.domain.model.AppLanguage
 import com.nmiet.app.domain.model.ContentType
@@ -32,9 +33,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.UUID
+
+data class TutorUiState(
+    val isGenerating: Boolean = false,
+    val statusText: String = "Generating..."
+)
 
 class AITutorViewModel(
     private val repository: ContentRepository,
@@ -42,7 +49,16 @@ class AITutorViewModel(
 ) : ViewModel() {
 
     private val geminiService = GeminiMultimodalService()
-    private val fluxService = FluxDiagramService()
+    private val geminiImageService = GeminiImageService()
+
+    private val _uiState = MutableStateFlow(TutorUiState())
+    val uiState: StateFlow<TutorUiState> = _uiState.asStateFlow()
+
+    private val _chatMessages = MutableStateFlow<List<TutorChatMessage>>(emptyList())
+    val chatMessages: StateFlow<List<TutorChatMessage>> = _chatMessages.asStateFlow()
+
+    private var lastSentMessage: String? = null
+    private var lastSentTime: Long = 0L
 
     val currentLanguage: StateFlow<AppLanguage> = languageManager?.currentLanguage
         ?: repository.getLearnerProfileFlow()
@@ -52,32 +68,31 @@ class AITutorViewModel(
     val messages: StateFlow<List<TutorMessage>> = repository.getTutorMessagesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Unified chat message representation for modern Chat UI
-    val chatMessages: StateFlow<List<TutorChatMessage>> = messages.map { list ->
-        list.map { msg ->
-            val resolvedText = when (currentLanguage.value) {
-                AppLanguage.ENGLISH_ONLY -> msg.textEnglish.ifBlank { msg.textOdia }
-                AppLanguage.ODIA_ONLY -> msg.textOdia.ifBlank { msg.textEnglish }
-                AppLanguage.HINDI_ONLY -> msg.textHindi.ifBlank { msg.textEnglish }
-                else -> msg.textEnglish.ifBlank { msg.textOdia }.ifBlank { msg.textHindi }
+    init {
+        viewModelScope.launch {
+            val dbMessages = repository.getTutorMessagesFlow().first()
+            if (dbMessages.isNotEmpty() && _chatMessages.value.isEmpty()) {
+                _chatMessages.value = dbMessages.map { msg ->
+                    val resolvedText = when (currentLanguage.value) {
+                        AppLanguage.ENGLISH_ONLY -> msg.textEnglish.ifBlank { msg.textOdia }
+                        AppLanguage.ODIA_ONLY -> msg.textOdia.ifBlank { msg.textEnglish }
+                        AppLanguage.HINDI_ONLY -> msg.textHindi.ifBlank { msg.textEnglish }
+                        else -> msg.textEnglish.ifBlank { msg.textOdia }.ifBlank { msg.textHindi }
+                    }
+                    TutorChatMessage(
+                        id = msg.id,
+                        sender = if (msg.sender == TutorSender.USER) MessageSender.USER else MessageSender.TUTOR,
+                        text = resolvedText,
+                        userUploadedImageUri = null,
+                        generatedDiagramBase64 = msg.imageBase64,
+                        sourceTag = if (msg.sender == TutorSender.USER) "" else "[Cloud AI]",
+                        timestamp = msg.timestamp,
+                        imageBitmap = msg.imageBitmap
+                    )
+                }
             }
-            TutorChatMessage(
-                id = msg.id,
-                sender = if (msg.sender == TutorSender.USER) MessageSender.USER else MessageSender.TUTOR,
-                text = resolvedText,
-                userUploadedImageUri = null,
-                generatedDiagramBase64 = msg.imageBase64,
-                sourceTag = when {
-                    !msg.imageBase64.isNullOrBlank() -> "[Cloud AI] Smart Visuals"
-                    msg.isNemotronReasoning -> "[Cloud AI] Academic Solver"
-                    msg.isOfflineGrounded -> "[Offline Grounded]"
-                    else -> "[Cloud AI] RelayNet Tutor"
-                },
-                timestamp = msg.timestamp,
-                imageBitmap = msg.imageBitmap
-            )
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
 
     val syncStatus: StateFlow<SyncStatus> = repository.getSyncStatusFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SyncStatus())
@@ -148,103 +163,210 @@ class AITutorViewModel(
         _offlineNotice.value = null
     }
 
-    // 1. TEXT / VOICE DOUBT SOLVING
-    fun sendTextMessage(query: String) {
-        val sendQuery = query.trim()
-        if (sendQuery.isBlank()) return
+    // 1. USER MESSAGE DISPATCH & DEBOUNCE (Precaution against accidental duplicate dispatches)
+    fun sendUserMessage(text: String) {
+        val trimmed = text.trim()
+        val currentTime = System.currentTimeMillis()
+        if (trimmed.isEmpty() || (trimmed == lastSentMessage && currentTime - lastSentTime < 1000)) {
+            return // Ignore accidental double clicks / duplicate triggers
+        }
+        lastSentMessage = trimmed
+        lastSentTime = currentTime
         _inputText.value = ""
 
-        if (isDiagramRequest(sendQuery) || FluxDiagramService.isDiagramIntent(sendQuery)) {
-            sendDiagramQuery(sendQuery)
-            return
+        // 1. Append user message ONCE
+        val userMsg = TutorChatMessage(
+            sender = MessageSender.USER,
+            text = trimmed,
+            sourceTag = "" // Do not show "[Cloud AI] RelayNet Tutor" on the USER bubble!
+        )
+        _chatMessages.update { it + userMsg }
+
+        // Persist to Room SQLite
+        viewModelScope.launch {
+            repository.saveTutorMessage(
+                TutorMessage(
+                    id = userMsg.id,
+                    sender = TutorSender.USER,
+                    textOdia = trimmed,
+                    textEnglish = trimmed,
+                    timestamp = userMsg.timestamp
+                )
+            )
         }
 
-        viewModelScope.launch {
-            _isGenerating.value = true
-            try {
-                val learnerProfile = repository.getLearnerProfileFlow().first()
-                val grade = "Class ${learnerProfile.classGrade}"
-                val board = learnerProfile.board.displayName
+        // 2. Process query
+        processQuery(trimmed)
+    }
 
-                // Optimistic user message
-                val userMsg = TutorMessage(
-                    id = "msg_user_${UUID.randomUUID().toString().take(6)}",
-                    sender = TutorSender.USER,
-                    textOdia = sendQuery,
-                    textEnglish = sendQuery,
-                    timestamp = System.currentTimeMillis()
-                )
-                repository.saveTutorMessage(userMsg)
+    // 2. QUERY PROCESSOR & DIAGRAM INTENT ROUTER
+    private fun processQuery(query: String) {
+        val isImageReq = query.lowercase().let { 
+            it.contains("diagram") || it.contains("image") || it.contains("draw") || 
+            it.contains("structure") || it.contains("flowchart") ||
+            it.contains("चित्र") || it.contains("ଚିତ୍ର")
+        }
 
-                // Call Gemini 1.5 Flash with 5-key rotation
-                val result = geminiService.solveTextQuery(
-                    query = sendQuery,
-                    language = currentLanguage.value,
-                    grade = grade,
-                    board = board,
-                    studyLevel = StudyLevel.INTERMEDIATE
-                )
+        if (isImageReq) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isGenerating = true, statusText = "Generating...") }
+                _isGenerating.value = true
+                _isGeneratingVisual.value = true
 
-                if (result.isSuccess) {
-                    val explanation = result.getOrNull() ?: ""
-                    val tutorMsg = TutorMessage(
-                        id = "msg_tutor_${UUID.randomUUID().toString().take(6)}",
-                        sender = TutorSender.TUTOR,
-                        textOdia = explanation,
-                        textEnglish = explanation,
-                        textHindi = explanation,
-                        timestamp = System.currentTimeMillis(),
-                        isCloudAI = true,
-                        isStudyRelated = true,
-                        sourceTags = listOf("gemini_1.5_flash", "rotating_keys")
+                val result = geminiImageService.generateEducationalDiagram(query)
+                result.onSuccess { base64Data ->
+                    _uiState.update { it.copy(isGenerating = false) }
+                    _isGenerating.value = false
+                    _isGeneratingVisual.value = false
+                    val tutorMsg = TutorChatMessage(
+                        sender = MessageSender.TUTOR,
+                        text = "Here is the visual diagram for $query:",
+                        generatedDiagramBase64 = base64Data,
+                        sourceTag = "[Cloud AI]"
                     )
-                    repository.saveTutorMessage(tutorMsg)
-                    speakResponse(explanation, messageId = tutorMsg.id)
-                } else {
-                    // Fallback to local grounded repository engine
-                    val langCode = when (currentLanguage.value) {
-                        AppLanguage.ENGLISH_ONLY -> "english"
-                        AppLanguage.ODIA_ONLY -> "odia"
-                        AppLanguage.HINDI_ONLY -> "hindi"
-                        AppLanguage.BILINGUAL_EN_HI -> "bilingual_hi"
-                        AppLanguage.BILINGUAL_EN_OR -> "bilingual_or"
-                    }
-                    val msg = repository.askTutor(questionText = sendQuery, imageBitmap = null, language = langCode)
-                    speakResponse(msg.getPrimaryText(currentLanguage.value), messageId = msg.id)
+                    _chatMessages.update { list -> list + tutorMsg }
+                    repository.saveTutorMessage(
+                        TutorMessage(
+                            id = tutorMsg.id,
+                            sender = TutorSender.TUTOR,
+                            textOdia = tutorMsg.text ?: "",
+                            textEnglish = tutorMsg.text ?: "",
+                            textHindi = tutorMsg.text ?: "",
+                            timestamp = tutorMsg.timestamp,
+                            isStudyRelated = true,
+                            isCloudAI = true,
+                            imageBase64 = base64Data
+                        )
+                    )
+                }.onFailure { _ ->
+                    _uiState.update { it.copy(isGenerating = false) }
+                    _isGenerating.value = false
+                    _isGeneratingVisual.value = false
+                    val tutorMsg = TutorChatMessage(
+                        sender = MessageSender.TUTOR,
+                        text = "Could not generate diagram at this moment. Please check your connectivity and try again.",
+                        sourceTag = "[Cloud AI]"
+                    )
+                    _chatMessages.update { list -> list + tutorMsg }
+                    repository.saveTutorMessage(
+                        TutorMessage(
+                            id = tutorMsg.id,
+                            sender = TutorSender.TUTOR,
+                            textOdia = tutorMsg.text ?: "",
+                            textEnglish = tutorMsg.text ?: "",
+                            textHindi = tutorMsg.text ?: "",
+                            timestamp = tutorMsg.timestamp,
+                            isStudyRelated = true,
+                            isCloudAI = true
+                        )
+                    )
                 }
-            } finally {
-                _isGenerating.value = false
+            }
+        } else {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isGenerating = true, statusText = "Generating...") }
+                _isGenerating.value = true
+                try {
+                    val learnerProfile = repository.getLearnerProfileFlow().first()
+                    val grade = "Class ${learnerProfile.classGrade}"
+                    val board = learnerProfile.board.displayName
+
+                    val result = geminiService.solveTextQuery(
+                        query = query,
+                        language = currentLanguage.value,
+                        grade = grade,
+                        board = board,
+                        studyLevel = StudyLevel.INTERMEDIATE
+                    )
+
+                    val explanation = if (result.isSuccess) {
+                        result.getOrNull() ?: ""
+                    } else {
+                        val langCode = when (currentLanguage.value) {
+                            AppLanguage.ENGLISH_ONLY -> "english"
+                            AppLanguage.ODIA_ONLY -> "odia"
+                            AppLanguage.HINDI_ONLY -> "hindi"
+                            AppLanguage.BILINGUAL_EN_HI -> "bilingual_hi"
+                            AppLanguage.BILINGUAL_EN_OR -> "bilingual_or"
+                        }
+                        val localMsg = repository.askTutor(
+                            questionText = query,
+                            imageBitmap = null,
+                            language = langCode,
+                            insertUserMessage = false
+                        )
+                        localMsg.getPrimaryText(currentLanguage.value)
+                    }
+
+                    val tutorMsg = TutorChatMessage(
+                        sender = MessageSender.TUTOR,
+                        text = explanation,
+                        sourceTag = "[Cloud AI]"
+                    )
+                    _chatMessages.update { list -> list + tutorMsg }
+                    repository.saveTutorMessage(
+                        TutorMessage(
+                            id = tutorMsg.id,
+                            sender = TutorSender.TUTOR,
+                            textOdia = explanation,
+                            textEnglish = explanation,
+                            textHindi = explanation,
+                            timestamp = tutorMsg.timestamp,
+                            isCloudAI = true,
+                            isStudyRelated = true
+                        )
+                    )
+                    speakResponse(explanation, messageId = tutorMsg.id)
+                } catch (e: Exception) {
+                    val errorMsg = TutorChatMessage(
+                        sender = MessageSender.TUTOR,
+                        text = "Could not process your question at this moment. Please check your connectivity and try again.",
+                        sourceTag = "[Cloud AI]"
+                    )
+                    _chatMessages.update { list -> list + errorMsg }
+                } finally {
+                    _uiState.update { it.copy(isGenerating = false) }
+                    _isGenerating.value = false
+                }
             }
         }
     }
 
-    // 2. PHOTO "SCAN & SOLVE"
+    // 3. PHOTO "SCAN & SOLVE"
     fun sendImageQuery(bitmap: Bitmap, caption: String? = null) {
         val promptText = caption?.trim()?.ifBlank { null } ?: "Analyze and solve this textbook problem / diagram step-by-step."
         _attachedImage.value = null
         _attachedImageUri.value = null
         _inputText.value = ""
 
+        val userMsg = TutorChatMessage(
+            sender = MessageSender.USER,
+            text = promptText,
+            sourceTag = "",
+            imageBitmap = bitmap
+        )
+        _chatMessages.update { it + userMsg }
+
         viewModelScope.launch {
-            _isGenerating.value = true
-            _isScanningImage.value = true
-            try {
-                // Optimistic user message with photo
-                val userMsg = TutorMessage(
-                    id = "msg_user_${UUID.randomUUID().toString().take(6)}",
+            repository.saveTutorMessage(
+                TutorMessage(
+                    id = userMsg.id,
                     sender = TutorSender.USER,
                     textOdia = promptText,
                     textEnglish = promptText,
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = userMsg.timestamp,
                     imageBitmap = bitmap
                 )
-                repository.saveTutorMessage(userMsg)
+            )
 
+            _uiState.update { it.copy(isGenerating = true, statusText = "Generating...") }
+            _isGenerating.value = true
+            _isScanningImage.value = true
+            try {
                 val learnerProfile = repository.getLearnerProfileFlow().first()
                 val grade = "Class ${learnerProfile.classGrade}"
                 val board = learnerProfile.board.displayName
 
-                // Multimodal Gemini 1.5 Vision with 5-key rotation failover
                 val result = geminiService.solveImageProblem(
                     bitmap = bitmap,
                     caption = promptText,
@@ -254,24 +376,9 @@ class AITutorViewModel(
                     studyLevel = StudyLevel.INTERMEDIATE
                 )
 
-                if (result.isSuccess) {
-                    val solution = result.getOrNull() ?: ""
-                    val tutorMsg = TutorMessage(
-                        id = "msg_vision_${UUID.randomUUID().toString().take(6)}",
-                        sender = TutorSender.TUTOR,
-                        textOdia = solution,
-                        textEnglish = solution,
-                        textHindi = solution,
-                        timestamp = System.currentTimeMillis(),
-                        isCloudAI = true,
-                        isStudyRelated = true,
-                        isNemotronReasoning = true,
-                        sourceTags = listOf("gemini_vision", "scan_and_solve", "curriculum_guardrail")
-                    )
-                    repository.saveTutorMessage(tutorMsg)
-                    speakResponse(solution, messageId = tutorMsg.id)
+                val solution = if (result.isSuccess) {
+                    result.getOrNull() ?: ""
                 } else {
-                    // Fallback to repository scan and solve endpoint
                     val langCode = when (currentLanguage.value) {
                         AppLanguage.ENGLISH_ONLY -> "en"
                         AppLanguage.ODIA_ONLY -> "or"
@@ -282,84 +389,56 @@ class AITutorViewModel(
                     val fallback = repository.scanAndSolveTextbook(
                         imageBitmap = bitmap,
                         userPrompt = promptText,
-                        language = langCode
+                        language = langCode,
+                        insertUserMessage = false
                     )
-                    speakResponse(fallback.getPrimaryText(currentLanguage.value), messageId = fallback.id)
+                    fallback.getPrimaryText(currentLanguage.value)
                 }
+
+                val tutorMsg = TutorChatMessage(
+                    sender = MessageSender.TUTOR,
+                    text = solution,
+                    sourceTag = "[Cloud AI]"
+                )
+                _chatMessages.update { list -> list + tutorMsg }
+                repository.saveTutorMessage(
+                    TutorMessage(
+                        id = tutorMsg.id,
+                        sender = TutorSender.TUTOR,
+                        textOdia = solution,
+                        textEnglish = solution,
+                        textHindi = solution,
+                        timestamp = tutorMsg.timestamp,
+                        isCloudAI = true,
+                        isStudyRelated = true
+                    )
+                )
+                speakResponse(solution, messageId = tutorMsg.id)
+            } catch (e: Exception) {
+                val errorMsg = TutorChatMessage(
+                    sender = MessageSender.TUTOR,
+                    text = "Could not analyze the image at this moment. Please check your connectivity and try again.",
+                    sourceTag = "[Cloud AI]"
+                )
+                _chatMessages.update { list -> list + errorMsg }
             } finally {
+                _uiState.update { it.copy(isGenerating = false) }
                 _isScanningImage.value = false
                 _isGenerating.value = false
             }
         }
     }
 
-    // 3. DIAGRAM GENERATION (FLUX.2 KLEIN)
+    fun sendTextMessage(query: String) {
+        sendUserMessage(query)
+    }
+
     fun sendDiagramQuery(prompt: String) {
-        val query = prompt.trim()
-        if (query.isBlank()) return
-        _inputText.value = ""
-
-        viewModelScope.launch {
-            _isGenerating.value = true
-            _isGeneratingVisual.value = true
-            try {
-                // Optimistic user message
-                val userMsg = TutorMessage(
-                    id = "msg_user_${UUID.randomUUID().toString().take(6)}",
-                    sender = TutorSender.USER,
-                    textOdia = query,
-                    textEnglish = query,
-                    timestamp = System.currentTimeMillis()
-                )
-                repository.saveTutorMessage(userMsg)
-
-                // Synthesize 16:9 diagram via FLUX.2 Klein
-                val result = fluxService.generateDiagram(
-                    prompt = query,
-                    subjectContext = "Class 9 Science",
-                    language = currentLanguage.value
-                )
-
-                if (result.isSuccess) {
-                    val b64 = result.getOrNull() ?: ""
-                    val caption = "Here is the scientific textbook diagram for '$query' synthesized by FLUX.2 Klein:"
-                    val tutorMsg = TutorMessage(
-                        id = "msg_flux_${UUID.randomUUID().toString().take(6)}",
-                        sender = TutorSender.TUTOR,
-                        textOdia = caption,
-                        textEnglish = caption,
-                        textHindi = caption,
-                        timestamp = System.currentTimeMillis(),
-                        isStudyRelated = true,
-                        isCloudAI = true,
-                        imageBase64 = b64,
-                        sourceTags = listOf("flux2_klein", "generated_diagram", "academic_visual")
-                    )
-                    repository.saveTutorMessage(tutorMsg)
-                } else {
-                    // Fallback to backend / local generator
-                    val langCode = when (currentLanguage.value) {
-                        AppLanguage.ENGLISH_ONLY -> "en"
-                        AppLanguage.ODIA_ONLY -> "or"
-                        AppLanguage.HINDI_ONLY -> "hi"
-                        AppLanguage.BILINGUAL_EN_HI -> "en_hi"
-                        AppLanguage.BILINGUAL_EN_OR -> "en_or"
-                    }
-                    repository.generateVisualDiagram(
-                        userPrompt = query,
-                        subjectContext = "Class 9 Science - Biology / Life Science",
-                        languageMode = langCode
-                    )
-                }
-            } finally {
-                _isGeneratingVisual.value = false
-                _isGenerating.value = false
-            }
-        }
+        sendUserMessage(prompt)
     }
 
     fun requestVisualDiagram(prompt: String) {
-        sendDiagramQuery(prompt)
+        sendUserMessage(prompt)
     }
 
     fun sendMessage(text: String = _inputText.value) {
@@ -373,14 +452,8 @@ class AITutorViewModel(
             return
         }
 
-        // 2. Diagram Generation
-        if (isDiagramRequest(query) || FluxDiagramService.isDiagramIntent(query)) {
-            sendDiagramQuery(query)
-            return
-        }
-
-        // 3. Text / Voice Doubt Solving
-        sendTextMessage(query)
+        // 2. Delegate to sendUserMessage
+        sendUserMessage(query)
     }
 
     fun isDiagramRequest(query: String): Boolean {
