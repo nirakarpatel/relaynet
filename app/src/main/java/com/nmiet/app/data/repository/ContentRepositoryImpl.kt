@@ -302,6 +302,159 @@ class ContentRepositoryImpl(
         tutorMsg
     }
 
+    override suspend fun generateVisualDiagram(
+        userPrompt: String,
+        subjectContext: String,
+        languageMode: String
+    ): TutorMessage = withContext(ioDispatcher) {
+        val now = System.currentTimeMillis()
+        val promptText = userPrompt.trim()
+
+        // 1. Optimistic user message
+        val userMsg = TutorMessage(
+            id = "msg_user_${UUID.randomUUID().toString().take(6)}",
+            sender = TutorSender.USER,
+            textOdia = promptText,
+            textEnglish = promptText,
+            textHindi = promptText,
+            timestamp = now,
+            isOfflineGrounded = false,
+            sourceChapter = null,
+            isStudyRelated = true
+        )
+        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(userMsg))
+
+        // 2. Call backend /tutor/generate-visual endpoint
+        val visualResult = callGenerateVisualEndpoint(promptText, subjectContext, languageMode)
+
+        // 3. Construct response TutorMessage
+        val tutorMsg = if (visualResult != null) {
+            TutorMessage(
+                id = "msg_visual_${UUID.randomUUID().toString().take(6)}",
+                sender = TutorSender.TUTOR,
+                textOdia = visualResult.message,
+                textEnglish = visualResult.message,
+                textHindi = visualResult.message,
+                timestamp = System.currentTimeMillis(),
+                isOfflineGrounded = false,
+                sourceChapter = "FLUX.2-Klein Visual Tutor",
+                isStudyRelated = visualResult.status == "success" && visualResult.hasImage,
+                imageBase64 = visualResult.imageBase64,
+                isCloudAI = true,
+                sourceTags = if (visualResult.hasImage) listOf("flux2_klein_4b", "textbook_diagram", "academic_visual") else listOf("visual_guardrail_refusal", "non_subject_blocked")
+            )
+        } else {
+            // Local fallback guardrail & offline handling
+            val qLower = promptText.lowercase()
+            val nonAcademicKeywords = listOf("meme", "funny", "joke", "movie", "game", "gaming", "pokemon", "anime", "superhero", "dating", "politics", "avatar")
+            val academicKeywords = listOf("photosynthesis", "chloroplast", "science", "biology", "physics", "chemistry", "diagram", "cell", "equation", "formula", "water cycle")
+            val isViolating = nonAcademicKeywords.any { qLower.contains(it) } && !academicKeywords.any { qLower.contains(it) }
+
+            if (isViolating) {
+                TutorMessage(
+                    id = "msg_visual_refuse_${UUID.randomUUID().toString().take(6)}",
+                    sender = TutorSender.TUTOR,
+                    textOdia = "ଜଣେ ଶିକ୍ଷା ସାଥୀ ଭାବରେ, ମୁଁ ପାଠ୍ୟକ୍ରମ ବାହାରର ଚିତ୍ର ତିଆରି କରିପାରିବି ନାହିଁ। ଆସନ୍ତୁ ବିଜ୍ଞାନ ଏବଂ ଗଣିତ ବିଷୟ ଉପରେ ଧ୍ୟାନ ଦେବା! (As your assistant, I cannot sketch non-curricular things. Let's focus on Science & Math!)",
+                    textEnglish = "As your assistant, I cannot sketch non-curricular things. Let's focus on Science & Math!",
+                    textHindi = "एक सहायक के रूप में, मैं गैर-पाठ्यचर्या संबंधी चित्र नहीं बना सकता। आइए विज्ञान और गणित पर ध्यान दें! (As your assistant, I cannot sketch non-curricular things. Let's focus on Science & Math!)",
+                    timestamp = System.currentTimeMillis(),
+                    isOfflineGrounded = true,
+                    sourceChapter = "RelayNet Visual Guardrails",
+                    isStudyRelated = false,
+                    isCloudAI = false,
+                    sourceTags = listOf("visual_guardrail_refusal", "offline_guardrail")
+                )
+            } else {
+                TutorMessage(
+                    id = "msg_visual_offline_${UUID.randomUUID().toString().take(6)}",
+                    sender = TutorSender.TUTOR,
+                    textOdia = "ଚିତ୍ର ପ୍ରସ୍ତୁତ କରିବା ପାଇଁ କ୍ଲାଉଡ୍ ସଂଯୋଗ ଆବଶ୍ୟକ। ଆପଣଙ୍କ ପ୍ରଶ୍ନ '$promptText' ପାଇଁ ସ୍ଥାନୀୟ ବିଜ୍ଞାନ ପାଠ୍ୟକ୍ରମ ଉପଲବ୍ଧ।",
+                    textEnglish = "Visual diagram generation requires active connectivity to FLUX.2 Klein on NVIDIA NIM. Text lessons for '$promptText' remain available offline in your local library.",
+                    textHindi = "चित्र निर्माण के लिए क्लाउड कनेक्टिविटी आवश्यक है। '$promptText' के लिए स्थानीय विज्ञान पाठ उपलब्ध हैं।",
+                    timestamp = System.currentTimeMillis(),
+                    isOfflineGrounded = true,
+                    sourceChapter = "RelayNet Visual Offline Fallback",
+                    isStudyRelated = true,
+                    isCloudAI = false,
+                    sourceTags = listOf("visual_offline_notice")
+                )
+            }
+        }
+
+        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(tutorMsg))
+        tutorMsg
+    }
+
+    override suspend fun saveTutorMessage(msg: TutorMessage) = withContext(ioDispatcher) {
+        learningDao.insertTutorMessage(TutorMessageEntity.fromDomain(msg))
+    }
+
+
+    private data class CloudVisualResponse(
+        val status: String,
+        val message: String,
+        val imageBase64: String?,
+        val hasImage: Boolean,
+        val source: String
+    )
+
+    private fun callGenerateVisualEndpoint(
+        userPrompt: String,
+        subjectContext: String,
+        languageMode: String
+    ): CloudVisualResponse? {
+        val backendUrls = listOf(
+            "http://10.0.2.2:8000/tutor/generate-visual",
+            "http://127.0.0.1:8000/tutor/generate-visual",
+            "http://localhost:8000/tutor/generate-visual"
+        )
+
+        val payload = JSONObject().apply {
+            put("user_prompt", userPrompt)
+            put("subject_context", subjectContext)
+            put("language_mode", languageMode)
+        }
+
+        for (endpoint in backendUrls) {
+            try {
+                val url = URL(endpoint)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.connectTimeout = 5000
+                conn.readTimeout = 25000
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                if (activeApiKey.isNotBlank()) {
+                    conn.setRequestProperty("Authorization", "Bearer $activeApiKey")
+                    conn.setRequestProperty("X-Api-Key", activeApiKey)
+                }
+
+                OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(payload.toString())
+                    writer.flush()
+                }
+
+                if (conn.responseCode == 200) {
+                    val reader = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8))
+                    val resString = reader.readText()
+                    reader.close()
+                    val json = JSONObject(resString)
+                    return CloudVisualResponse(
+                        status = json.optString("status", "success"),
+                        message = json.optString("message", ""),
+                        imageBase64 = if (json.has("imageBase64") && !json.isNull("imageBase64")) json.getString("imageBase64") else null,
+                        hasImage = json.optBoolean("has_image", false),
+                        source = json.optString("source", "[Cloud AI] FLUX.2-Klein (4B)")
+                    )
+                }
+            } catch (_: Exception) {
+                // Try next endpoint or fall back
+            }
+        }
+        return null
+    }
+
+
     private fun resolveLocalGroundedTutor(
         question: String,
         hasImage: Boolean,

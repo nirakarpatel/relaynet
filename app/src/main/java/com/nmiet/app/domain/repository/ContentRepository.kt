@@ -47,6 +47,16 @@ interface ContentRepository {
         curriculumContext: String = "Class 9 Science - Biology / Life Science"
     ): TutorMessage
 
+    suspend fun generateVisualDiagram(
+        userPrompt: String,
+        subjectContext: String = "Class 9 Science - Biology / Life Science",
+        languageMode: String = "en_or"
+    ): TutorMessage
+
+    suspend fun saveTutorMessage(msg: TutorMessage)
+
+
+
     suspend fun saveIncomingLearningPack(pack: LearningPack, peerName: String)
     suspend fun deleteLearningPack(packId: String)
     suspend fun resetToPilotDemoPacks()

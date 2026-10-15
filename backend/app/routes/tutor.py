@@ -106,3 +106,59 @@ async def scan_and_solve_endpoint(
         custom_api_key=custom_key
     )
 
+
+from pydantic import BaseModel
+from fastapi import HTTPException
+from services.image_tutor_service import analyze_and_build_blueprint, generate_subject_image
+
+
+class GenerateRequest(BaseModel):
+    user_prompt: str
+    subject_context: str = "Class 9 Science - Biology / Life Science"
+    language_mode: str = "en_or"
+
+
+@router.post("/generate-visual")
+@router.post("/tutor/generate-visual")
+async def tutor_generate_visual(req: GenerateRequest):
+    """
+    Strictly guardrailed visual diagram generator for AI Tutor using:
+    Stage 1: Gemini 1.5 Flash Guardrail & Multi-lingual Blueprint Expansion (Rotating Keys)
+    Stage 2: NVIDIA NIM FLUX.2 Klein 4B 4-step image synthesis
+    """
+    analysis = await analyze_and_build_blueprint(
+        req.user_prompt,
+        req.subject_context,
+        req.language_mode
+    )
+
+    if not analysis.get("is_valid", False):
+        return {
+            "status": "refused",
+            "message": analysis.get("refusal_text", "As your assistant, I cannot sketch non-curricular things. Let's focus on Science & Math!"),
+            "has_image": False
+        }
+
+    try:
+        img_b64 = generate_subject_image(analysis["flux_prompt"])
+        
+        # Localized companion message
+        lang = req.language_mode.lower()
+        if "or" in lang or "odia" in lang:
+            msg = f"ଏହା {req.user_prompt} ର ଏକ ବୈଜ୍ଞାନିକ ଚିତ୍ର ଯାହା ଆପଣଙ୍କ ପାଠ୍ୟକ୍ରମ ସହ ସମ୍ପର୍କିତ:"
+        elif "hi" in lang or "hindi" in lang:
+            msg = f"यह {req.user_prompt} की एक वैज्ञानिक तस्वीर है जो आपके अध्ययन से संबंधित है:"
+        else:
+            msg = f"Here is a scientific diagram of {req.user_prompt} grounded in your curriculum:"
+
+        return {
+            "status": "success",
+            "message": msg,
+            "imageBase64": img_b64,
+            "has_image": True,
+            "source": "[Cloud AI] FLUX.2-Klein (4B)"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,8 +51,22 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -102,8 +118,26 @@ fun AITutorScreen(
     val attachedImage by viewModel.attachedImage.collectAsState()
     val isRecording by viewModel.isRecordingVoice.collectAsState()
     val isGenerating by viewModel.isGenerating.collectAsState()
+    val isGeneratingVisual by viewModel.isGeneratingVisual.collectAsState()
     val isScanningImage by viewModel.isScanningImage.collectAsState()
     val offlineNotice by viewModel.offlineNotice.collectAsState()
+    val currentlySpeakingMessageId by viewModel.currentlySpeakingMessageId.collectAsState()
+    val isTtsSpeaking by viewModel.isTtsSpeaking.collectAsState()
+    val isTtsPaused by viewModel.isTtsPaused.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.initTts(context)
+    }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.startVoiceRecognition(context)
+        } else {
+            viewModel.simulateVoiceInput()
+        }
+    }
 
     val listState = rememberLazyListState()
 
@@ -146,6 +180,7 @@ fun AITutorScreen(
     }
 
     Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             AppTopBar(
                 title = headerTitle,
@@ -156,7 +191,7 @@ fun AITutorScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding(), bottom = 2.dp)
         ) {
             // Mode Banner
             Box(
@@ -175,7 +210,7 @@ fun AITutorScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (syncStatus.isOnline)
-                            "Online Mode: [Cloud AI] Gemini Vision & Study Guardrails active"
+                            "Online Mode: [Cloud AI] Gemini Vision & FLUX.2-Klein synthesis active"
                         else
                             "Offline Mode: [Offline Grounded] using local Room SQLite FTS cache",
                         fontSize = 11.sp,
@@ -185,7 +220,7 @@ fun AITutorScreen(
                 }
             }
 
-            // Offline Notification Banner for Photo Scan
+            // Offline Notification Banner for Photo Scan / Visual Gen
             AnimatedVisibility(
                 visible = offlineNotice != null,
                 enter = fadeIn() + expandVertically(),
@@ -239,15 +274,19 @@ fun AITutorScreen(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages, key = { it.id }) { msg ->
                     TutorMessageBubble(
                         message = msg,
                         isOnlineContext = syncStatus.isOnline,
-                        currentLanguage = currentLanguage
+                        currentLanguage = currentLanguage,
+                        isCurrentlySpeaking = (currentlySpeakingMessageId == msg.id && isTtsSpeaking),
+                        isCurrentMessagePaused = (currentlySpeakingMessageId == msg.id && isTtsPaused),
+                        onToggleSpeak = { text -> viewModel.toggleSpeakMessage(msg.id, text, context) },
+                        isScanningActive = (isScanningImage && msg == messages.lastOrNull { it.sender == TutorSender.USER && it.imageBitmap != null })
                     )
                 }
 
@@ -260,7 +299,11 @@ fun AITutorScreen(
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isScanningImage) "Scanning textbook problem with Nemotron..." else "RelayNet AI Tutor is solving with academic grounding...",
+                                text = when {
+                                    isGeneratingVisual -> "Synthesizing textbook diagram with FLUX.2-Klein (4-Step NIM)..."
+                                    isScanningImage -> "Scanning textbook question with Gemini Vision (rotating 5 keys)..."
+                                    else -> "RelayNet AI Tutor is solving with academic grounding..."
+                                },
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -269,9 +312,85 @@ fun AITutorScreen(
                 }
             }
 
-            // Animated Audio-Wave indicator when microphone press-to-speak is active
-            if (isRecording) {
+            // Animated Audio-Wave indicator with smooth visibility transition to prevent content jump
+            AnimatedVisibility(
+                visible = isRecording,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 VoiceWaveformIndicator()
+            }
+
+            // Floating TTS Audio Control Bar (with Pause / Resume / Stop options)
+            AnimatedVisibility(
+                visible = isTtsSpeaking || isTtsPaused,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = PrimaryBlue.copy(alpha = 0.12f)),
+                    border = BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                imageVector = if (isTtsSpeaking) Icons.Default.VolumeUp else Icons.Default.Pause,
+                                contentDescription = null,
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isTtsSpeaking) "Tutor reading answer aloud..." else "Tutor voice paused",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = {
+                                    if (isTtsSpeaking) {
+                                        viewModel.pauseTts()
+                                    } else {
+                                        val activeMsg = messages.find { it.id == currentlySpeakingMessageId }
+                                        val text = activeMsg?.getPrimaryText(currentLanguage) ?: ""
+                                        viewModel.speakResponse(text, context, currentlySpeakingMessageId)
+                                    }
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isTtsSpeaking) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = if (isTtsSpeaking) "Pause" else "Resume",
+                                    tint = PrimaryBlue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.stopTts() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Stop,
+                                    contentDescription = "Stop",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // One-tap suggestion chips
@@ -282,6 +401,14 @@ fun AITutorScreen(
                 AppLanguage.BILINGUAL_EN_HI -> "📸 Attach Diagram (चित्र)"
                 AppLanguage.BILINGUAL_EN_OR -> "📸 Attach Diagram (ଚିତ୍ର)"
             }
+            val drawChipLabel = when (currentLanguage) {
+                AppLanguage.ENGLISH_ONLY -> "🎨 Draw Photosynthesis Diagram"
+                AppLanguage.ODIA_ONLY -> "🎨 ଆଲୋକ ଶ୍ଳେଷଣ ଚିତ୍ର ଆଙ୍କନ୍ତୁ"
+                AppLanguage.HINDI_ONLY -> "🎨 प्रकाश संश्लेषण चित्र बनाएं"
+                AppLanguage.BILINGUAL_EN_HI -> "🎨 Draw Diagram (चित्र)"
+                AppLanguage.BILINGUAL_EN_OR -> "🎨 Draw Diagram (ଚିତ୍ର)"
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -289,10 +416,26 @@ fun AITutorScreen(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                // Attach Textbook Photo Chip
                 SuggestionChip(
                     onClick = { viewModel.attachSampleTextbookPhoto() },
                     label = { Text(attachChipLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue) }
                 )
+
+                // Scan, Draw, & Solve Visual Synthesis Chip
+                SuggestionChip(
+                    onClick = {
+                        val drawPrompt = when (currentLanguage) {
+                            AppLanguage.ENGLISH_ONLY -> "Draw a labeled scientific diagram of Photosynthesis light reactions and chloroplast structure"
+                            AppLanguage.ODIA_ONLY -> "ଆଲୋକ ଶ୍ଳେଷଣ ପ୍ରକ୍ରିୟା ଏବଂ ହରିତକଣାର ଚିତ୍ର ଆଙ୍କନ୍ତୁ"
+                            AppLanguage.HINDI_ONLY -> "प्रकाश संश्लेषण प्रक्रिया और हरितलवक का नामांकित चित्र बनाएं"
+                            else -> "Draw a labeled scientific diagram of Photosynthesis light reactions and chloroplast structure"
+                        }
+                        viewModel.requestVisualDiagram(drawPrompt)
+                    },
+                    label = { Text(drawChipLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AccentCyan) }
+                )
+
                 sampleQueries.forEach { query ->
                     SuggestionChip(
                         onClick = { viewModel.sendMessage(query) },
@@ -309,7 +452,18 @@ fun AITutorScreen(
                 onImageSelected = { viewModel.onImageCaptured(it) },
                 onClearImage = { viewModel.clearAttachedImage() },
                 isRecordingVoice = isRecording,
-                onMicClick = { viewModel.simulateVoiceInput() },
+                onMicClick = {
+                    val hasAudioPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.RECORD_AUDIO
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                    if (hasAudioPerm) {
+                        viewModel.toggleVoiceRecognition(context)
+                    } else {
+                        audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                    }
+                },
                 onSendClick = { viewModel.sendMessage() },
                 isGenerating = isGenerating
             )
@@ -321,50 +475,66 @@ fun AITutorScreen(
 fun TutorMessageBubble(
     message: TutorMessage,
     isOnlineContext: Boolean,
-    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR
+    currentLanguage: AppLanguage = AppLanguage.BILINGUAL_EN_OR,
+    isCurrentlySpeaking: Boolean = false,
+    isCurrentMessagePaused: Boolean = false,
+    onToggleSpeak: ((String) -> Unit)? = null,
+    isScanningActive: Boolean = false
 ) {
     val isUser = message.sender == TutorSender.USER
+
+    val primaryText = if (isUser) {
+        message.textEnglish.ifBlank { message.textOdia }
+    } else {
+        when (currentLanguage) {
+            AppLanguage.ENGLISH_ONLY -> message.textEnglish
+            AppLanguage.ODIA_ONLY -> message.textOdia.ifBlank { message.textEnglish }
+            AppLanguage.HINDI_ONLY -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+            AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
+            AppLanguage.BILINGUAL_EN_OR -> message.textOdia.ifBlank { message.textEnglish }
+        }
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
-        // Amber warning card if query was out of syllabus & rejected by guardrail
+        // Red alert card if query was out of syllabus & rejected by academic guardrail
         if (!message.isStudyRelated) {
             val guardrailTitle = when (currentLanguage) {
-                AppLanguage.ENGLISH_ONLY -> "Study-Only Guardrail Triggered"
-                AppLanguage.ODIA_ONLY -> "କେବଳ ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା ନିୟମ"
-                AppLanguage.HINDI_ONLY -> "केवल अध्ययन सुरक्षा नियम"
-                AppLanguage.BILINGUAL_EN_HI -> "Study Guardrail (अध्ययन सुरक्षा)"
-                AppLanguage.BILINGUAL_EN_OR -> "Study Guardrail (ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା)"
+                AppLanguage.ENGLISH_ONLY -> "Curriculum Guardrail Notice"
+                AppLanguage.ODIA_ONLY -> "ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା ନିୟମ"
+                AppLanguage.HINDI_ONLY -> "पाठ्यक्रम सुरक्षा नियम"
+                AppLanguage.BILINGUAL_EN_HI -> "Curriculum Guardrail (पाठ्यक्रम सुरक्षा)"
+                AppLanguage.BILINGUAL_EN_OR -> "Curriculum Guardrail (ପାଠ୍ୟକ୍ରମ ସୁରକ୍ଷା)"
             }
-            val guardrailMsg = when (currentLanguage) {
-                AppLanguage.ENGLISH_ONLY -> "I can only answer academic curriculum questions."
-                AppLanguage.ODIA_ONLY -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି।"
-                AppLanguage.HINDI_ONLY -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ।"
-                AppLanguage.BILINGUAL_EN_HI -> "मैं केवल शैक्षणिक पाठ्यक्रम से संबंधित प्रश्नों के उत्तर दे सकता हूँ। (I can only answer academic curriculum questions)."
-                AppLanguage.BILINGUAL_EN_OR -> "ମୁଁ କେବଳ ପାଠପଢ଼ା ଏବଂ ପାଠ୍ୟକ୍ରମ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି। (I can only answer academic curriculum questions)."
+            val guardrailMsg = when {
+                message.textEnglish.isNotBlank() && (message.textEnglish.contains("assistant") || message.textEnglish.contains("sketch")) -> message.textEnglish
+                message.textOdia.isNotBlank() && message.textOdia.contains("ଶିକ୍ଷା") -> message.textOdia
+                currentLanguage == AppLanguage.ODIA_ONLY -> "ଜଣେ ଶିକ୍ଷା ସାଥୀ ଭାବରେ, ମୁଁ ପାଠ୍ୟକ୍ରମ ବାହାରର ଚିତ୍ର ତିଆରି କରିପାରିବି ନାହିଁ। ଆସନ୍ତୁ ବିଜ୍ଞାନ ଏବଂ ଗଣିତ ବିଷୟ ଉପରେ ଧ୍ୟାନ ଦେବା!"
+                currentLanguage == AppLanguage.HINDI_ONLY -> "एक सहायक के रूप में, मैं गैर-पाठ्यचर्या संबंधी चित्र नहीं बना सकता। आइए विज्ञान और गणित पर ध्यान दें!"
+                else -> "As your assistant, I cannot sketch non-curricular things. Let's focus on Science & Math!"
             }
             Card(
                 modifier = Modifier.fillMaxWidth(0.92f),
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = WarningAmber.copy(alpha = 0.15f)),
-                border = BorderStroke(1.dp, WarningAmber.copy(alpha = 0.6f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.error)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = null,
-                            tint = WarningAmber,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = guardrailTitle,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = WarningAmber
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -372,7 +542,7 @@ fun TutorMessageBubble(
                         text = guardrailMsg,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                         lineHeight = 20.sp
                     )
                 }
@@ -402,36 +572,63 @@ fun TutorMessageBubble(
                             Text("RelayNet AI Tutor", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
                         }
 
-                        // Origin Badge: [Cloud AI] Nemotron-3-Super Vision & Reasoning vs [Offline Grounded] vs [Cloud AI]
-                        val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
-                        val badgeText = when {
-                            message.isNemotronReasoning -> "[Cloud AI] Nemotron-3-Super Vision & Reasoning"
-                            isOfflineGrounded -> "[Offline Grounded]"
-                            else -> "[Cloud AI]"
-                        }
-                        val badgeBg = when {
-                            message.isNemotronReasoning -> Color(0xFF6B21A8).copy(alpha = 0.15f)
-                            isOfflineGrounded -> SuccessGreen.copy(alpha = 0.15f)
-                            else -> AccentCyan.copy(alpha = 0.15f)
-                        }
-                        val badgeTextColor = when {
-                            message.isNemotronReasoning -> Color(0xFF9333EA)
-                            isOfflineGrounded -> SuccessGreen
-                            else -> AccentCyan
-                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (onToggleSpeak != null) {
+                                IconButton(
+                                    onClick = { onToggleSpeak(primaryText) },
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isCurrentlySpeaking) PrimaryBlue.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                                ) {
+                                    Icon(
+                                        imageVector = when {
+                                            isCurrentlySpeaking -> Icons.Default.Pause
+                                            isCurrentMessagePaused -> Icons.Default.PlayArrow
+                                            else -> Icons.Default.VolumeUp
+                                        },
+                                        contentDescription = if (isCurrentlySpeaking) "Pause Voice" else "Listen to Tutor",
+                                        tint = if (isCurrentlySpeaking) PrimaryBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
 
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(badgeBg)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = badgeText,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = badgeTextColor
-                            )
+                            // Origin Badge: [Cloud AI] FLUX.2 vs [Cloud AI] Gemini Vision vs [Offline Grounded] vs [Cloud AI] Gemini 1.5
+                            val isOfflineGrounded = message.isOfflineGrounded || !isOnlineContext
+                            val badgeText = when {
+                                !message.imageBase64.isNullOrBlank() -> "[Cloud AI] FLUX.2"
+                                message.isNemotronReasoning -> "[Cloud AI] Gemini Vision"
+                                isOfflineGrounded -> "[Offline Grounded]"
+                                else -> "[Cloud AI] Gemini 1.5"
+                            }
+                            val badgeBg = when {
+                                !message.imageBase64.isNullOrBlank() -> AccentCyan.copy(alpha = 0.2f)
+                                message.isNemotronReasoning -> Color(0xFF6B21A8).copy(alpha = 0.15f)
+                                isOfflineGrounded -> SuccessGreen.copy(alpha = 0.15f)
+                                else -> AccentCyan.copy(alpha = 0.15f)
+                            }
+                            val badgeTextColor = when {
+                                !message.imageBase64.isNullOrBlank() -> PrimaryBlue
+                                message.isNemotronReasoning -> Color(0xFF9333EA)
+                                isOfflineGrounded -> SuccessGreen
+                                else -> AccentCyan
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(badgeBg)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = badgeText,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = badgeTextColor
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
@@ -439,28 +636,142 @@ fun TutorMessageBubble(
 
                 // If user attached an image, render preview inside bubble
                 if (isUser && message.imageBitmap != null) {
-                    Image(
-                        bitmap = message.imageBitmap.asImageBitmap(),
-                        contentDescription = "User submitted photo",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(140.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Image(
+                            bitmap = message.imageBitmap.asImageBitmap(),
+                            contentDescription = "User submitted photo",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        if (isScanningActive) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                                    .background(Color.Black.copy(alpha = 0.72f))
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Scanning textbook question with Gemini Vision...",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                val primaryText = if (isUser) {
-                    message.textEnglish.ifBlank { message.textOdia }
-                } else {
-                    when (currentLanguage) {
-                        AppLanguage.ENGLISH_ONLY -> message.textEnglish
-                        AppLanguage.ODIA_ONLY -> message.textOdia.ifBlank { message.textEnglish }
-                        AppLanguage.HINDI_ONLY -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
-                        AppLanguage.BILINGUAL_EN_HI -> if (message.textHindi.isNotBlank()) message.textHindi else message.textEnglish
-                        AppLanguage.BILINGUAL_EN_OR -> message.textOdia.ifBlank { message.textEnglish }
+                // If tutor returned a synthesized educational diagram (FLUX.2 Klein 16:9 illustration or Base64)
+                val tutorImageBitmap = remember(message.imageBase64, message.imageBitmap) {
+                    if (!isUser) {
+                        if (message.imageBitmap != null) {
+                            message.imageBitmap
+                        } else if (!message.imageBase64.isNullOrBlank()) {
+                            try {
+                                val cleanB64 = message.imageBase64.substringAfter("base64,")
+                                val decodedBytes = android.util.Base64.decode(cleanB64, android.util.Base64.DEFAULT)
+                                android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                            } catch (_: Exception) {
+                                null
+                            }
+                        } else null
+                    } else null
+                }
+
+                if (!isUser && tutorImageBitmap != null) {
+                    var showFullScreenZoom by remember { mutableStateOf(false) }
+
+                    // High-quality 16:9 diagram card with full-screen zoom trigger
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                    .background(Color.White)
+                            ) {
+                            Image(
+                                bitmap = tutorImageBitmap.asImageBitmap(),
+                                contentDescription = "Generated Educational Diagram",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { showFullScreenZoom = true },
+                                contentScale = ContentScale.Fit
+                            )
+
+                            // Zoom-in full-screen trigger overlay badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.65f))
+                                    .clickable { showFullScreenZoom = true }
+                                    .padding(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ZoomIn,
+                                    contentDescription = "Zoom Diagram Full Screen",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        // Explanatory label below diagram card
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(PrimaryBlue.copy(alpha = 0.08f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = null,
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Synthesized Textbook Diagram (FLUX.2-Klein • 16:9 HD)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+                        }
                     }
+
+                    // Full-screen Zoom Dialog with interactive pinch-to-zoom
+                    if (showFullScreenZoom) {
+                        FullScreenZoomableImageDialog(
+                            bitmap = tutorImageBitmap,
+                            title = "FLUX.2-Klein Textbook Diagram",
+                            onDismiss = { showFullScreenZoom = false }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 val secondaryText = if (!isUser) {
@@ -527,6 +838,7 @@ fun TutorMessageBubble(
         }
     }
 }
+}
 
 @Composable
 fun VoiceWaveformIndicator() {
@@ -584,4 +896,102 @@ fun animateMicPulse(isRecording: Boolean): androidx.compose.runtime.State<Float>
         ),
         label = "scale"
     )
+}
+
+@Composable
+fun FullScreenZoomableImageDialog(
+    bitmap: Bitmap,
+    title: String = "Textbook Diagram (16:9 HD)",
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        var scale by remember { mutableFloatStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset.Zero) }
+        val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+            scale = (scale * zoomChange).coerceIn(1f, 5f)
+            val maxOffset = 500f * (scale - 1f)
+            offset = Offset(
+                x = (offset.x + panChange.x).coerceIn(-maxOffset, maxOffset),
+                y = (offset.y + panChange.y).coerceIn(-maxOffset, maxOffset)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "Pinch to zoom (1x - 5x) • Drag to pan",
+                        color = Color.LightGray,
+                        fontSize = 11.sp
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (scale > 1.05f) {
+                        TextButton(onClick = {
+                            scale = 1f
+                            offset = Offset.Zero
+                        }) {
+                            Text("Reset Zoom", color = AccentCyan)
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 70.dp, horizontal = 12.dp)
+                    .transformable(state = transformableState),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Full Screen Visual Blueprint",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offset.x
+                            translationY = offset.y
+                        },
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+    }
 }
