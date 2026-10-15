@@ -42,7 +42,8 @@ import java.util.UUID
 
 class ContentRepositoryImpl(
     private val learningDao: LearningDao,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val archiveDir: java.io.File? = null
 ) : ContentRepository {
 
     private var activeApiKey: String = ""
@@ -956,6 +957,17 @@ class ContentRepositoryImpl(
 
     override suspend fun getPackByIdOnce(packId: String): LearningPack? = withContext(ioDispatcher) {
         learningDao.getPackByIdOnce(packId)?.toDomain()
+    }
+
+    override suspend fun getPackArchiveFile(packId: String): java.io.File? = withContext(ioDispatcher) {
+        val pack = getPackByIdOnce(packId) ?: return@withContext null
+        val targetDir = archiveDir ?: java.io.File(System.getProperty("java.io.tmpdir"), "relaynet_archives").apply { mkdirs() }
+        val packFile = java.io.File(targetDir, "pack_${pack.packId}.zip")
+        if (packFile.exists() && packFile.length() > 0L) {
+            packFile
+        } else {
+            com.nmiet.app.data.local.ZipPackManager.createPackZip(pack, packFile)
+        }
     }
 
     // --- LearnLite Content Catalogue & Downloads ---

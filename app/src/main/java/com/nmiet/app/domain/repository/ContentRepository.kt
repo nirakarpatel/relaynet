@@ -74,6 +74,7 @@ interface ContentRepository {
     suspend fun toggleNoteBookmark(noteId: String, isBookmarked: Boolean)
     suspend fun deleteGeneratedNote(noteId: String)
     suspend fun getPackByIdOnce(packId: String): LearningPack?
+    suspend fun getPackArchiveFile(packId: String): java.io.File?
 
     // LearnLite Content Catalogue & Downloads
     fun getContentItemsFlow(): Flow<List<com.nmiet.app.domain.model.ContentItem>>

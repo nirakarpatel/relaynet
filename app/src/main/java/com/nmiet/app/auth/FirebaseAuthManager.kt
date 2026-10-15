@@ -13,6 +13,7 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.nmiet.app.BuildConfig
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -29,31 +30,38 @@ data class AuthResult(
 
 /**
  * Manages Firebase Authentication and Google Sign-In with safe offline fallback.
- * If FirebaseApp is not initialized (e.g., google-services.json not configured yet)
- * or device is completely offline, it fails gracefully and enables seamless local operation.
+ * Supports both automatic google-services.json initialization and programmatic
+ * FirebaseOptions configuration with project credentials.
  */
 object FirebaseAuthManager {
 
     private const val TAG = "FirebaseAuthManager"
 
     /**
-     * Initializes FirebaseApp with relaynet-001 project credentials if not already initialized.
+     * Initializes FirebaseApp with project credentials from BuildConfig if not already initialized.
      */
     fun initialize(context: Context) {
         try {
-            if (FirebaseApp.getApps(context).isEmpty()) {
-                val options = FirebaseOptions.Builder()
-                    .setApiKey("AIzaSyA4NHj-TH6eBZDiCff8AglliOfUuzE4PRg")
-                    .setApplicationId("1:752084871127:android:ac9a252a138a76796f8d92")
-                    .setProjectId("relaynet-001")
-                    .setStorageBucket("relaynet-001.firebasestorage.app")
-                    .setGcmSenderId("752084871127")
-                    .build()
-                FirebaseApp.initializeApp(context.applicationContext, options)
-                Log.i(TAG, "FirebaseApp successfully initialized for project relaynet-001")
+            if (FirebaseApp.getApps(context.applicationContext).isEmpty()) {
+                val apiKey = BuildConfig.FIREBASE_API_KEY
+                val projectId = BuildConfig.FIREBASE_PROJECT_ID
+                val appId = BuildConfig.FIREBASE_APP_ID
+                val storageBucket = BuildConfig.FIREBASE_STORAGE_BUCKET
+
+                if (apiKey.isNotBlank() && projectId.isNotBlank() && appId.isNotBlank()) {
+                    val builder = FirebaseOptions.Builder()
+                        .setApiKey(apiKey)
+                        .setProjectId(projectId)
+                        .setApplicationId(appId)
+                    if (storageBucket.isNotBlank()) {
+                        builder.setStorageBucket(storageBucket)
+                    }
+                    FirebaseApp.initializeApp(context.applicationContext, builder.build())
+                    Log.i(TAG, "Firebase successfully initialized for project: $projectId")
+                }
             }
         } catch (e: Throwable) {
-            Log.w(TAG, "Firebase programmatic initialization failed: ${e.message}")
+            Log.w(TAG, "Programmatic Firebase initialization skipped or failed: ${e.message}")
         }
     }
 
@@ -68,7 +76,7 @@ object FirebaseAuthManager {
         return try {
             FirebaseAuth.getInstance()
         } catch (e: Throwable) {
-            Log.w(TAG, "Firebase Authentication not initialized or google-services.json not present: ${e.message}")
+            Log.w(TAG, "Firebase Authentication not initialized: ${e.message}")
             null
         }
     }
