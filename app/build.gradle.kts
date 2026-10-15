@@ -15,19 +15,28 @@ val localProperties = Properties().apply {
 
 val geminiKeyList = mutableListOf<String>()
 for (i in 1..5) {
-    val key = localProperties.getProperty("gemini.key$i", "")?.trim() ?: ""
+    val key = localProperties.getProperty("gemini.key$i", "")?.trim()
+        ?.ifEmpty { System.getenv("GEMINI_KEY_$i")?.trim() } ?: ""
     if (key.isNotBlank()) {
         geminiKeyList.add(key)
     }
 }
 if (geminiKeyList.isEmpty()) {
-    val commaKeys = localProperties.getProperty("gemini.keys", "")?.trim() ?: ""
+    val commaKeys = localProperties.getProperty("gemini.keys", "")?.trim()
+        ?.ifEmpty { System.getenv("GEMINI_KEYS")?.trim() } ?: ""
     if (commaKeys.isNotBlank()) {
         geminiKeyList.addAll(commaKeys.split(",").map { it.trim() }.filter { it.isNotBlank() })
     }
 }
+if (geminiKeyList.isEmpty()) {
+    val singleEnv = System.getenv("GEMINI_API_KEY")?.trim() ?: ""
+    if (singleEnv.isNotBlank()) {
+        geminiKeyList.add(singleEnv)
+    }
+}
 val geminiKeys = geminiKeyList.joinToString(",")
-val nvidiaApiKey = localProperties.getProperty("nvidia.api.key", "")?.trim() ?: ""
+val nvidiaApiKey = localProperties.getProperty("nvidia.api.key", "")?.trim()
+    ?.ifEmpty { System.getenv("NVIDIA_API_KEY")?.trim() } ?: ""
 
 android {
     namespace = "com.nmiet.app"

@@ -481,17 +481,17 @@ class VoiceAssistantManager(
                         )
                         speakUtterance(text = answerText, config = config)
                     }.onFailure { error ->
-                        Log.w("VoiceAssistantManager", "Gemini solveTextQuery failed (${error.message}). Falling back to Room SQLite search on IO.")
+                        Log.w("VoiceAssistantManager", "Gemini solveTextQuery failed (${error.message}). Falling back to Room SQLite package search on IO.")
                         // Graceful offline fallback: Run in IO dispatcher so Room main thread check never triggers!
                         val localFallback = withContext(Dispatchers.IO) {
                             try {
                                 AppDatabase.getInstance(context).learningDao()
-                                    .searchLessonContent(spokenQuery)
+                                    .searchLessonContent(spokenQuery, activeLanguage)
                             } catch (t: Throwable) {
                                 Log.e("VoiceAssistantManager", "Room SQLite searchLessonContent failed", t)
-                                null
+                                "Offline curriculum packages are available for Photosynthesis, Brain Anatomy, and Chemical Reactions. Ask about these topics or connect online to use Cloud AI."
                             }
-                        } ?: "I could not find an answer offline. Please reconnect to cloud AI or try another curriculum question."
+                        }
 
                         _uiState.value = VoiceUiState.Speaking(
                             query = spokenQuery,

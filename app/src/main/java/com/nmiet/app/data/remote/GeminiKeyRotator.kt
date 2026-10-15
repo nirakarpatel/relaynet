@@ -12,37 +12,66 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.atomic.AtomicInteger
 
-class GeminiKeyRotator(private val apiKeys: List<String> = DEFAULT_KEYS) {
+class GeminiKeyRotator(private var apiKeys: List<String> = DEFAULT_KEYS) {
     private val currentIndex = AtomicInteger(0)
     private val mutex = Mutex()
 
-    init {
-        require(apiKeys.isNotEmpty()) { "At least one Gemini API key must be provided." }
+    fun hasValidKeys(): Boolean {
+        return apiKeys.any { it.isNotBlank() && !it.startsWith("YOUR_") }
     }
 
-    fun getActiveKey(): String = apiKeys[currentIndex.get() % apiKeys.size]
+    fun getValidKeys(): List<String> {
+        return apiKeys.filter { it.isNotBlank() && !it.startsWith("YOUR_") }
+    }
 
-    fun getActiveKeyIndex(): Int = (currentIndex.get() % apiKeys.size) + 1
+    fun getActiveKey(): String {
+        val valid = getValidKeys()
+        if (valid.isEmpty()) return ""
+        return valid[currentIndex.get() % valid.size]
+    }
+
+    fun getActiveKeyIndex(): Int {
+        val valid = getValidKeys()
+        if (valid.isEmpty()) return 1
+        return (currentIndex.get() % valid.size) + 1
+    }
+
+    fun updateKeys(newKeys: List<String>) {
+        val cleaned = newKeys.map { it.trim() }.filter { it.isNotBlank() && !it.startsWith("YOUR_") }
+        if (cleaned.isNotEmpty()) {
+            apiKeys = cleaned
+            currentIndex.set(0)
+            Log.i("GeminiKeyRotator", "Updated Gemini keys with ${cleaned.size} active keys.")
+        }
+    }
 
     suspend fun rotateKey(failedKey: String? = null) = mutex.withLock {
+        val valid = getValidKeys()
+        if (valid.isEmpty()) return@withLock
         if (failedKey == null || failedKey == getActiveKey()) {
-            val next = (currentIndex.incrementAndGet()) % apiKeys.size
+            val next = (currentIndex.incrementAndGet()) % valid.size
             Log.w("GeminiKeyRotator", "Switching to next Gemini API Key [Index: $next]")
         }
     }
 
-    suspend fun <T> executeWithRetry(maxRetries: Int = apiKeys.size, call: suspend (apiKey: String) -> T): Result<T> {
+    suspend fun <T> executeWithRetry(maxRetries: Int = 3, call: suspend (apiKey: String) -> T): Result<T> {
+        val valid = getValidKeys()
+        if (valid.isEmpty()) {
+            return Result.failure(IllegalStateException("No valid Gemini API keys configured. Please add gemini.key1 in local.properties."))
+        }
+
         var attempts = 0
         var lastException: Throwable? = null
+        val retries = maxRetries.coerceAtMost(valid.size)
 
-        while (attempts < maxRetries) {
+        while (attempts < retries) {
             val key = getActiveKey()
             try {
                 val result = call(key)
                 return Result.success(result)
             } catch (e: Exception) {
                 lastException = e
-                Log.e("GeminiKeyRotator", "Key failed: ${e.message}. Rotating...")
+                Log.e("GeminiKeyRotator", "Key [Index: ${getActiveKeyIndex()}] failed: ${e.message}. Rotating...")
                 rotateKey(key)
                 attempts++
             }
@@ -144,13 +173,7 @@ class GeminiKeyRotator(private val apiKeys: List<String> = DEFAULT_KEYS) {
             if (fromConfig.isNotEmpty()) {
                 fromConfig
             } else {
-                listOf(
-                    "YOUR_GEMINI_KEY_1",
-                    "YOUR_GEMINI_KEY_2",
-                    "YOUR_GEMINI_KEY_3",
-                    "YOUR_GEMINI_KEY_4",
-                    "YOUR_GEMINI_KEY_5"
-                )
+                emptyList()
             }
         }
 
