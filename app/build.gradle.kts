@@ -28,6 +28,13 @@ if (geminiKeyList.isEmpty()) {
 }
 val geminiKeys = geminiKeyList.joinToString(",")
 val nvidiaApiKey = localProperties.getProperty("nvidia.api.key", "")?.trim() ?: ""
+val firebaseApiKey = localProperties.getProperty("firebase.api.key", "")?.trim() ?: ""
+val firebaseProjectId = localProperties.getProperty("firebase.project.id", "")?.trim() ?: ""
+val firebaseStorageBucket = localProperties.getProperty("firebase.storage.bucket", "")?.trim() ?: ""
+val firebaseAppId = localProperties.getProperty("firebase.app.id", "")?.trim() ?: ""
+val supabaseUrl = localProperties.getProperty("supabase.url", "")?.trim() ?: ""
+val supabasePublishableKey = localProperties.getProperty("supabase.publishable.key", "")?.trim() ?: ""
+val supabaseProjectRef = localProperties.getProperty("supabase.project.ref", "")?.trim() ?: ""
 
 android {
     namespace = "com.nmiet.app"
@@ -46,6 +53,13 @@ android {
 
         buildConfigField("String", "GEMINI_KEYS", "\"$geminiKeys\"")
         buildConfigField("String", "NVIDIA_API_KEY", "\"$nvidiaApiKey\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        buildConfigField("String", "FIREBASE_STORAGE_BUCKET", "\"$firebaseStorageBucket\"")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"$firebaseAppId\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
+        buildConfigField("String", "SUPABASE_PROJECT_REF", "\"$supabaseProjectRef\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 0. Initialize Firebase (relaynet-001)
+        // 0. Initialize Firebase with project credentials if uninitialized
         com.nmiet.app.auth.FirebaseAuthManager.initialize(applicationContext)
 
         // 1. Initialize SQLite Database & Learning DAO
@@ -36,7 +36,10 @@ class MainActivity : ComponentActivity() {
         val learningDao = database.learningDao()
 
         // 2. Initialize Learning Platform Repository
-        val repository = ContentRepositoryImpl(learningDao = learningDao)
+        val repository = ContentRepositoryImpl(
+            learningDao = learningDao,
+            archiveDir = applicationContext.cacheDir
+        )
 
         // Preload pilot catalog data and Brain Learning Pack if empty or absent
         lifecycleScope.launch(Dispatchers.IO) {
@@ -77,6 +80,11 @@ class MainActivity : ComponentActivity() {
             scope = lifecycleScope,
             onPackReceivedCallback = { pack, peerName ->
                 repository.saveIncomingLearningPack(pack, peerName)
+            },
+            onNoteReceivedCallback = { note, peerName ->
+                // Single persistence ownership: GoogleNearbyConnectionsManager directly validates and
+                // persists the note into Room before dispatching the ACK.
+                // This callback is strictly for UI/observer notifications.
             }
         )
 
