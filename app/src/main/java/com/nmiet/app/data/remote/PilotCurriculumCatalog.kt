@@ -443,8 +443,8 @@ object PilotCurriculumCatalog {
             }
             else -> {
                 Pair(
-                    "ଆପଣଙ୍କ ପ୍ରଶ୍ନ ପାଇଁ ଧନ୍ୟବାଦ। କ୍ଲାସ୍ ୯ ବିଜ୍ଞାନ 'Chapter 4: Photosynthesis (ଆଲୋକ ଶ୍ଳେଷଣ)' ଅନୁଯାୟୀ ଉଦ୍ଭିଦ ମାଟିରୁ ଜଳ ଏବଂ ବାୟୁରୁ CO₂ ନେଇ ସୂର୍ଯ୍ୟାଲୋକରେ ଗ୍ଲୁକୋଜ୍ ପ୍ରସ୍ତୁତ କରେ। ଅଧିକ ଜାଣିବା ପାଇଁ ପାଠ୍ୟପୁସ୍ତକ ପଢ଼ନ୍ତୁ କିମ୍ବା କୁଇଜ୍ ଅଭ୍ୟାସ କରନ୍ତୁ।",
-                    "According to Class 9 Science Chapter 4: Photosynthesis, plants synthesize glucose from atmospheric CO₂ and soil H₂O under solar radiation. Read the lesson summary and take the practice quiz to verify your conceptual mastery!"
+                    "ଆପଣଙ୍କ ପ୍ରଶ୍ନ '$query' ପାଇଁ ସ୍ଥାନୀୟ ପାଠ୍ୟକ୍ରମ ଉପଲବ୍ଧ। ଦୟାକରି ବିସ୍ତୃତ ଉତ୍ତର ପାଇଁ ଅନଲାଇନ୍ AI ସହିତ ସଂଯୋଗ କରନ୍ତୁ କିମ୍ବା ଆପଣଙ୍କ ପାଠ୍ୟପୁସ୍ତକ ଅଧ୍ୟାୟ ଅନୁସରଣ କରନ୍ତୁ।",
+                    "For your question '$query', please consult your syllabus textbook or connect to online AI for a comprehensive multimodal solution."
                 )
             }
         }

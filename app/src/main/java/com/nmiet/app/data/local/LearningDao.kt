@@ -35,6 +35,33 @@ interface LearningDao {
     @Query("SELECT * FROM learning_packs WHERE titleOdia LIKE '%' || :query || '%' OR titleEnglish LIKE '%' || :query || '%' OR odiaContentJson LIKE '%' || :query || '%' OR englishContentJson LIKE '%' || :query || '%' OR sectionsJson LIKE '%' || :query || '%' LIMIT 3")
     fun searchPacksOffline(query: String): List<LearningPackEntity>
 
+    fun searchLessonContent(query: String): String? {
+        val stopWords = setOf("what", "when", "where", "which", "who", "why", "how", "explain", "about", "tell", "please", "with", "from", "this", "that", "the", "and", "is", "are", "was", "were", "does", "did", "define")
+        val keywords = query.lowercase().split(Regex("[\\s,?.!]+"))
+            .filter { it.length > 2 && it !in stopWords }
+
+        for (kw in (if (keywords.isNotEmpty()) keywords else listOf(query.trim()))) {
+            if (kw.isBlank()) continue
+            val packs = searchPacksOffline(kw)
+            if (packs.isNotEmpty()) {
+                val pack = packs.first()
+                val title = pack.titleEnglish.ifBlank { pack.titleOdia }
+                val topic = pack.topicEnglish.ifBlank { pack.topicOdia }.ifBlank { pack.chapterEnglish }
+                val eq = pack.equationOrFormula?.let { "\nFormula: $it" } ?: ""
+                return "Topic: $title - $topic$eq"
+            }
+        }
+        val directMatches = searchPacksOffline(query.trim())
+        if (directMatches.isNotEmpty()) {
+            val pack = directMatches.first()
+            val title = pack.titleEnglish.ifBlank { pack.titleOdia }
+            val topic = pack.topicEnglish.ifBlank { pack.topicOdia }.ifBlank { pack.chapterEnglish }
+            val eq = pack.equationOrFormula?.let { "\nFormula: $it" } ?: ""
+            return "Topic: $title - $topic$eq"
+        }
+        return null
+    }
+
     @Query("SELECT * FROM learning_packs WHERE packId = :packId LIMIT 1")
     fun getPackById(packId: String): Flow<LearningPackEntity?>
 

@@ -290,7 +290,7 @@ class ContentRepositoryImpl(
                 sourceTags = listOf("nemotron_scan_solve", "llama_vision_ocr")
             )
         } else {
-            val fallback = resolveLocalGroundedTutor("Explain photosynthesis photolysis of water equation", true, language)
+            val fallback = resolveLocalGroundedTutor(promptText, true, language)
             fallback.copy(
                 id = "msg_nemotron_local_${UUID.randomUUID().toString().take(6)}",
                 isNemotronReasoning = true,
