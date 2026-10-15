@@ -39,43 +39,6 @@ class GeminiMultimodalService(
         """.trimIndent()
     }
 
-    private fun buildVoicePrompt(
-        language: AppLanguage,
-        grade: String,
-        board: String
-    ): String {
-        val langInstruction = when (language) {
-            AppLanguage.ODIA_ONLY -> "Respond in clear, natural Odia (ଓଡ଼ିଆ)."
-            AppLanguage.HINDI_ONLY -> "Respond in clear, conversational Hindi (हिंदी)."
-            AppLanguage.BILINGUAL_EN_OR -> "Respond in Odia with English scientific keywords."
-            AppLanguage.BILINGUAL_EN_HI -> "Respond in Hindi with English scientific keywords (Hinglish)."
-            AppLanguage.ENGLISH_ONLY -> "Respond in clear, simple Indian English."
-        }
-        return """
-            You are RelayNet Academic Voice Tutor for school students ($grade, $board).
-            You answer curriculum questions across all school subjects: Science, Mathematics, Biology, Chemistry, Physics, History, Geography, and Social Studies.
-            CRITICAL SPOKEN VOICE-TO-VOICE INSTRUCTIONS:
-            - Give a direct, helpful, and conversational educational answer.
-            - Keep your response concise: exactly 2 to 3 spoken sentences (max 45 words), suitable for Text-To-Speech (TTS).
-            - Strictly NO markdown formatting: do not use asterisks (* or **), hashtags (#), bullet points, or backticks.
-            - $langInstruction
-            - Refuse non-study / non-academic queries politely and briefly.
-        """.trimIndent()
-    }
-
-    private fun cleanSpokenText(text: String): String {
-        return text
-            .replace("**", "")
-            .replace("*", "")
-            .replace("#", "")
-            .replace("`", "")
-            .replace("•", "")
-            .replace("_", "")
-            .replace(Regex("(?m)^\\s*[-*]\\s+"), "")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-    }
-
     // 1. TEXT / VOICE DOUBT SOLVING
     suspend fun solveTextQuery(
         query: String,
@@ -84,14 +47,10 @@ class GeminiMultimodalService(
         board: String,
         studyLevel: StudyLevel = StudyLevel.INTERMEDIATE
     ): Result<String> = withContext(Dispatchers.IO) {
-        if (!keyRotator.hasValidKeys()) {
-            return@withContext Result.failure(IllegalStateException("No valid Gemini API key configured. Fallback to offline package content."))
-        }
         keyRotator.executeWithRetry { key ->
-            val model = getModel(key, buildVoicePrompt(language, grade, board))
+            val model = getModel(key, buildSystemPrompt(language, grade, board, studyLevel))
             val response = model.generateContent(query)
-            val raw = response.text ?: "Could not generate an explanation. Please try again."
-            cleanSpokenText(raw)
+            response.text ?: "Could not generate an explanation. Please try again."
         }
     }
 

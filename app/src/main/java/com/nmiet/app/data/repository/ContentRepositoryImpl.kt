@@ -521,9 +521,8 @@ class ContentRepositoryImpl(
             )
         }
 
-        val odiaResp = com.nmiet.app.data.local.OfflinePackageAnswerResolver.resolveAnswer(question, com.nmiet.app.domain.model.AppLanguage.ODIA_ONLY, learningDao)
-        val engResp = com.nmiet.app.data.local.OfflinePackageAnswerResolver.resolveAnswer(question, com.nmiet.app.domain.model.AppLanguage.ENGLISH_ONLY, learningDao)
-        val sourceChap = if (matchingPacks.isNotEmpty()) matchingPacks.first().titleEnglish else "Odisha Board Class 9 Science (Curriculum Packs)"
+        val (odiaResp, engResp) = PilotCurriculumCatalog.getOfflineTutorResponse(question)
+        val sourceChap = if (matchingPacks.isNotEmpty()) matchingPacks.first().titleEnglish else "Odisha Board Class 9 Science (Chapter 4)"
 
         return TutorMessage(
             id = "msg_tutor_${UUID.randomUUID().toString().take(6)}",
